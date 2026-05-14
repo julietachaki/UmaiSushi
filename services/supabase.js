@@ -13,8 +13,8 @@
  */
 
 // ===== CONFIGURACIÓN =====
-const SUPABASE_URL = 'https://eqawmvmaohpsxydyepab.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_FikNriJW7_FoAbOFzIM_iQ__1m5OEax';
+const SUPABASE_URL = 'REEMPLAZAR_URL'; // Ejemplo: 'https://xyzcompany.supabase.co'
+const SUPABASE_ANON_KEY = 'REEMPLAZAR_ANON_KEY'; // Ejemplo: '
 
 // ===== INICIALIZACIÓN =====
 let supabaseClient = null;
