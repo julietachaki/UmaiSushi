@@ -1,0 +1,660 @@
+/**
+ * ZONAS SERVICE - UmaiSushi
+ * 
+ * Gestión de zonas de delivery con Supabase (SOLO)
+ * NO usa localStorage para zonas
+ * Si Supabase falla: mostrar error, NO inventar datos
+ * 
+ * Tabla Supabase: zonas_delivery
+ * Campos: id, nombre, center_lat, center_lng, radius_m, envio
+ */
+
+// ===== FUNCIONES DE NORMALIZACIÓN =====
+/**
+ * Normalizar zonas desde Supabase a formato circular interno
+ * Supabase: { id, nombre, center_lat, center_lng, radius_m, envio }
+ * Local: { id, nombre, envio, center:{lat,lng}, radiusM }
+ * @private
+ */
+function normalizarZonasDesdeSupabase(zonas) {
+    return zonas.map(z => ({
+        id: z.id,
+        nombre: z.nombre,
+        envio: Number(z.envio) || 0,
+        center: {
+            lat: Number(z.center_lat) || 0,
+            lng: Number(z.center_lng) || 0
+        },
+        radiusM: Number(z.radius_m) || 1500
+    }));
+}
+
+/**
+ * Normalizar zona desde Supabase a formato circular interno
+ * @private
+ */
+function normalizarZonaDesdeSupabase(zona) {
+    return {
+        id: zona.id,
+        nombre: zona.nombre,
+        envio: Number(zona.envio) || 0,
+        center: {
+            lat: Number(zona.center_lat) || 0,
+            lng: Number(zona.center_lng) || 0
+        },
+        radiusM: Number(zona.radius_m) || 1500
+    };
+}
+
+/**
+ * Normalizar zonas de formato local a Supabase
+ * @private
+ */
+function normalizarZonasParaSupabase(zonas) {
+    return zonas.map(z => ({
+        id: z.id,
+        nombre: z.nombre,
+        envio: Number(z.envio) || 0,
+        center_lat: Number(z.center?.lat || 0),
+        center_lng: Number(z.center?.lng || 0),
+        radius_m: Number(z.radiusM) || 1500
+    }));
+}
+
+// ===== OBTENER ZONAS =====
+/**
+ * Obtener todas las zonas de delivery SOLO desde Supabase
+ * Si falla: retorna array vacío, loggea error
+ * @returns {Promise<Array>} Array de zonas normalizadas o vacío si error
+ */
+async function obtenerZonas() {
+    console.log('[zonas] Obteniendo zonas desde Supabase...');
+    
+    const supabase = getSupabase();
+    
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[zonas] Supabase no disponible');
+        return [];
+    }
+    
+    try {
+        const { data, error } = await supabase
+            .from('zonas_delivery')
+            .select('*')
+            .order('nombre', { ascending: true });
+        
+        if (error) {
+            console.error('[zonas] Error obteniendo zonas:', error.message);
+            return [];
+        }
+        
+        if (Array.isArray(data)) {
+            // Normalizar para compatibilidad con estructura circular
+            const zonasNormalizadas = normalizarZonasDesdeSupabase(data);
+            console.log('[zonas] ✓ Cargadas desde Supabase:', data.length, 'zonas');
+            return zonasNormalizadas;
+        }
+        
+        console.log('[zonas] No hay zonas en Supabase');
+        return [];
+        
+    } catch (e) {
+        console.error('[zonas] Excepción obteniendo zonas:', e.message);
+        return [];
+    }
+}
+
+// ===== GUARDAR ZONAS =====
+/**
+ * Guardar todas las zonas en Supabase (UPSERT completo)
+ * Reemplaza completamente las zonas existentes
+ * @param {Array} zonas - Array de zonas (formato local)
+ * @returns {Promise<Array>} Zonas guardadas o null si error
+ */
+async function guardarZonas(zonas) {
+    console.log('[zonas] Guardando', zonas?.length || 0, 'zonas en Supabase...');
+    
+    const supabase = getSupabase();
+    const zonasArray = Array.isArray(zonas) ? zonas : [];
+    
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[zonas] Supabase no disponible');
+        return null;
+    }
+    
+    try {
+        // Normalizar para Supabase
+        const zonasParaSupabase = normalizarZonasParaSupabase(zonasArray);
+        
+        // Obtener IDs existentes para eliminar las que ya no están
+        const { data: existentes, error: errorGet } = await supabase
+            .from('zonas_delivery')
+            .select('id');
+        
+        if (errorGet) {
+            console.error('[zonas] Error obteniendo zonas existentes:', errorGet.message);
+            return null;
+        }
+        
+        const idsExistentes = (existentes || []).map(z => z.id);
+        const idsNuevos = zonasParaSupabase.map(z => z.id);
+        const idsAEliminar = idsExistentes.filter(id => !idsNuevos.includes(id));
+        
+        // Eliminar zonas obsoletas
+        for (const id of idsAEliminar) {
+            await supabase
+                .from('zonas_delivery')
+                .delete()
+                .eq('id', id);
+        }
+        
+        // UPSERT todas las zonas
+        const { data, error } = await supabase
+            .from('zonas_delivery')
+            .upsert(zonasParaSupabase, { onConflict: 'id' })
+            .select();
+        
+        if (error) {
+            console.error('[zonas] Error guardando zonas:', error.message);
+            return null;
+        }
+        
+        if (Array.isArray(data)) {
+            const zonasNormalizadas = normalizarZonasDesdeSupabase(data);
+            console.log('[zonas] ✓ Guardadas en Supabase:', data.length, 'zonas');
+            return zonasNormalizadas;
+        }
+        
+        console.warn('[zonas] UPSERT no retornó datos');
+        return null;
+        
+    } catch (e) {
+        console.error('[zonas] Excepción guardando zonas:', e.message);
+        return null;
+    }
+}
+
+// ===== CREAR ZONA =====
+/**
+ * Crear nueva zona en Supabase (UPSERT)
+ * @param {Object} zona - { nombre, envio, center:{lat,lng}, radiusM }
+ * @returns {Promise<Object>} Zona creada o null si error
+ */
+async function crearZona(zona) {
+    console.log('[zonas] Creando zona en Supabase:', zona.nombre);
+    
+    const supabase = getSupabase();
+    
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[zonas] Supabase no disponible');
+        return null;
+    }
+    
+    try {
+        // Asignar ID si no tiene
+        const zonaParaSupabase = {
+            id: zona.id || 'z-' + Math.random().toString(36).slice(2, 11),
+            nombre: zona.nombre,
+            envio: Number(zona.envio) || 0,
+            center_lat: Number(zona.center?.lat || 0),
+            center_lng: Number(zona.center?.lng || 0),
+            radius_m: Number(zona.radiusM) || 1500
+        };
+        
+        const { data, error } = await supabase
+            .from('zonas_delivery')
+            .upsert(zonaParaSupabase, { onConflict: 'id' })
+            .select()
+            .single();
+        
+        if (error) {
+            console.error('[zonas] Error creando zona:', error.message);
+            return null;
+        }
+        
+        const zonaNormalizada = normalizarZonaDesdeSupabase(data);
+        console.log('[zonas] ✓ Zona creada:', zonaNormalizada.nombre);
+        return zonaNormalizada;
+        
+    } catch (e) {
+        console.error('[zonas] Excepción creando zona:', e.message);
+        return null;
+    }
+}
+
+// ===== ACTUALIZAR ZONA =====
+/**
+ * Actualizar zona existente en Supabase (UPSERT)
+ * @param {string} id - ID de la zona
+ * @param {Object} updates - Campos a actualizar
+ * @returns {Promise<Object>} Zona actualizada o null si error
+ */
+async function actualizarZona(id, updates) {
+    console.log('[zonas] Actualizando zona en Supabase:', id);
+    
+    const supabase = getSupabase();
+    
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[zonas] Supabase no disponible');
+        return null;
+    }
+    
+    try {
+        // Obtener zona actual
+        const { data: zonaActual, error: errorGet } = await supabase
+            .from('zonas_delivery')
+            .select('*')
+            .eq('id', id)
+            .single();
+        
+        if (errorGet) {
+            console.error('[zonas] Error obteniendo zona para actualizar:', errorGet.message);
+            return null;
+        }
+        
+        // Aplicar updates
+        const zonaActualizada = {
+            id: zonaActual.id,
+            nombre: updates.nombre !== undefined ? updates.nombre : zonaActual.nombre,
+            envio: updates.envio !== undefined ? Number(updates.envio) : zonaActual.envio,
+            center_lat: updates.center?.lat !== undefined ? Number(updates.center.lat) : zonaActual.center_lat,
+            center_lng: updates.center?.lng !== undefined ? Number(updates.center.lng) : zonaActual.center_lng,
+            radius_m: updates.radiusM !== undefined ? Number(updates.radiusM) : zonaActual.radius_m
+        };
+        
+        const { data, error } = await supabase
+            .from('zonas_delivery')
+            .upsert(zonaActualizada, { onConflict: 'id' })
+            .select()
+            .single();
+        
+        if (error) {
+            console.error('[zonas] Error actualizando zona:', error.message);
+            return null;
+        }
+        
+        const zonaNormalizada = normalizarZonaDesdeSupabase(data);
+        console.log('[zonas] ✓ Zona actualizada:', zonaNormalizada.nombre);
+        return zonaNormalizada;
+        
+    } catch (e) {
+        console.error('[zonas] Excepción actualizando zona:', e.message);
+        return null;
+    }
+}
+
+// ===== ELIMINAR ZONA =====
+/**
+ * Eliminar zona de Supabase
+ * @param {string} id - ID de la zona
+ * @returns {Promise<boolean>} true si se eliminó, false si error
+ */
+async function eliminarZona(id) {
+    console.log('[zonas] Eliminando zona de Supabase:', id);
+    
+    const supabase = getSupabase();
+    
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[zonas] Supabase no disponible');
+        return false;
+    }
+    
+    try {
+        const { error } = await supabase
+            .from('zonas_delivery')
+            .delete()
+            .eq('id', id);
+        
+        if (error) {
+            console.error('[zonas] Error eliminando zona:', error.message);
+            return false;
+        }
+        
+        console.log('[zonas] ✓ Zona eliminada:', id);
+        return true;
+        
+    } catch (e) {
+        console.error('[zonas] Excepción eliminando zona:', e.message);
+        return false;
+    }
+}
+
+// ===== CALCULAR DELIVERY =====
+/**
+ * Calcular costo de delivery basado en coordenadas
+ * Mantiene compatible con calculateDelivery() existente
+ * @param {Object} coords - { lat, lng }
+ * @param {Array} zonas - Array de zonas (si no se pasa, obtiene de Supabase)
+ * @returns {Promise<Object>} { ok, zone, costoEnvio, distanceM }
+ */
+async function calcularDeliveryAsync(coords, zonas = null) {
+    console.log('[zonas] Calculando delivery para coords:', coords);
+    
+    let zonasParaUsar = zonas;
+    
+    if (!zonasParaUsar) {
+        zonasParaUsar = await obtenerZonas();
+    }
+    
+    // Usar la función existente de delivery-calc.js si está disponible
+    if (typeof calculateDelivery === 'function') {
+        const resultado = calculateDelivery(coords, zonasParaUsar);
+        console.log('[zonas] ✓ Delivery calculado:', resultado.ok ? 'OK' : 'Fuera de zonas');
+        return resultado;
+    }
+    
+    console.warn('[zonas] calculateDelivery() no disponible');
+    return { ok: false, zone: null, costoEnvio: 0, reason: 'no_calculator' };
+}
+
+// ===== EXPORTACIÓN =====
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        obtenerZonas,
+        guardarZonas,
+        crearZona,
+        actualizarZona,
+        eliminarZona,
+        calcularDeliveryAsync
+    };
+}
+function normalizarZonasDesdeSupabase(zonas) {
+    return zonas.map(z => ({
+        id: z.id,
+        nombre: z.nombre,
+        envio: Number(z.envio) || 0,
+        center: {
+            lat: Number(z.center_lat),
+            lng: Number(z.center_lng)
+        },
+        radiusM: Number(z.radius_m)
+    }));
+}
+
+/**
+ * Normalizar zonas de formato local a Supabase
+ * Local: { id, nombre, envio, center:{lat,lng}, radiusM }
+ * Supabase: { id, nombre, center_lat, center_lng, radius_m, envio }
+ * @private
+ */
+function normalizarZonasParaSupabase(zonas) {
+    return zonas.map(z => ({
+        id: z.id,
+        nombre: z.nombre,
+        envio: Number(z.envio) || 0,
+        center_lat: Number(z.center?.lat || 0),
+        center_lng: Number(z.center?.lng || 0),
+        radius_m: Number(z.radiusM) || 1500
+    }));
+}
+
+// ===== GUARDAR ZONAS =====
+/**
+ * Guardar todas las zonas en Supabase (UPSERT completo)
+ * Reemplaza completamente las zonas existentes
+ * @param {Array} zonas - Array de zonas (formato local)
+ * @returns {Promise<Array>} Zonas guardadas o null si error
+ */
+async function guardarZonas(zonas) {
+    console.log('[zonas] Guardando', zonas?.length || 0, 'zonas en Supabase...');
+    
+    const supabase = getSupabase();
+    const zonasArray = Array.isArray(zonas) ? zonas : [];
+    
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[zonas] Supabase no disponible');
+        return null;
+    }
+    
+    try {
+        // Normalizar para Supabase
+        const zonasParaSupabase = normalizarZonasParaSupabase(zonasArray);
+        
+        // Obtener IDs existentes para eliminar las que ya no están
+        const { data: existentes, error: errorGet } = await supabase
+            .from('zonas_delivery')
+            .select('id');
+        
+        if (errorGet) {
+            console.error('[zonas] Error obteniendo zonas existentes:', errorGet.message);
+            return null;
+        }
+        
+        const idsExistentes = (existentes || []).map(z => z.id);
+        const idsNuevos = zonasParaSupabase.map(z => z.id);
+        const idsAEliminar = idsExistentes.filter(id => !idsNuevos.includes(id));
+        
+        // Eliminar zonas obsoletas
+        for (const id of idsAEliminar) {
+            await supabase
+                .from('zonas_delivery')
+                .delete()
+                .eq('id', id);
+        }
+        
+        // UPSERT todas las zonas
+        const { data, error } = await supabase
+            .from('zonas_delivery')
+            .upsert(zonasParaSupabase, { onConflict: 'id' })
+            .select();
+        
+        if (error) {
+            console.error('[zonas] Error guardando zonas:', error.message);
+            return null;
+        }
+        
+        if (Array.isArray(data)) {
+            const zonasNormalizadas = normalizarZonasDesdeSupabase(data);
+            console.log('[zonas] ✓ Guardadas en Supabase:', data.length, 'zonas');
+            return zonasNormalizadas;
+        }
+        
+        console.warn('[zonas] UPSERT no retornó datos');
+        return null;
+        
+    } catch (e) {
+        console.error('[zonas] Excepción guardando zonas:', e.message);
+        return null;
+    }
+}
+
+/**
+ * Guardar zonas en localStorage
+ * @private
+ */
+function guardarZonasLocal(zonas) {
+    try {
+        const zonasArray = Array.isArray(zonas) ? zonas : [];
+        localStorage.setItem(ZONAS_LS_KEY, JSON.stringify(zonasArray));
+        console.log('[zonas] ✓ Guardadas en localStorage:', zonasArray.length, 'zonas');
+        return zonasArray;
+    } catch (e) {
+        console.error('[zonas] Error guardando en localStorage:', e.message);
+        return null;
+    }
+}
+
+// ===== CREAR ZONA =====
+/**
+ * Crear nueva zona en Supabase (UPSERT)
+ * @param {Object} zona - { nombre, envio, center:{lat,lng}, radiusM }
+ * @returns {Promise<Object>} Zona creada o null si error
+ */
+async function crearZona(zona) {
+    console.log('[zonas] Creando zona en Supabase:', zona.nombre);
+    
+    const supabase = getSupabase();
+    
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[zonas] Supabase no disponible');
+        return null;
+    }
+    
+    try {
+        // Asignar ID si no tiene
+        const zonaParaSupabase = {
+            id: zona.id || 'z-' + Math.random().toString(36).slice(2, 11),
+            nombre: zona.nombre,
+            envio: Number(zona.envio) || 0,
+            center_lat: Number(zona.center?.lat || 0),
+            center_lng: Number(zona.center?.lng || 0),
+            radius_m: Number(zona.radiusM) || 1500
+        };
+        
+        const { data, error } = await supabase
+            .from('zonas_delivery')
+            .upsert(zonaParaSupabase, { onConflict: 'id' })
+            .select()
+            .single();
+        
+        if (error) {
+            console.error('[zonas] Error creando zona:', error.message);
+            return null;
+        }
+        
+        const zonaNormalizada = normalizarZonaDesdeSupabase(data);
+        console.log('[zonas] ✓ Zona creada:', zonaNormalizada.nombre);
+        return zonaNormalizada;
+        
+    } catch (e) {
+        console.error('[zonas] Excepción creando zona:', e.message);
+        return null;
+    }
+}
+
+// ===== ACTUALIZAR ZONA =====
+/**
+ * Actualizar zona existente en Supabase (UPSERT)
+ * @param {string} id - ID de la zona
+ * @param {Object} updates - Campos a actualizar
+ * @returns {Promise<Object>} Zona actualizada o null si error
+ */
+async function actualizarZona(id, updates) {
+    console.log('[zonas] Actualizando zona en Supabase:', id);
+    
+    const supabase = getSupabase();
+    
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[zonas] Supabase no disponible');
+        return null;
+    }
+    
+    try {
+        // Obtener zona actual
+        const { data: zonaActual, error: errorGet } = await supabase
+            .from('zonas_delivery')
+            .select('*')
+            .eq('id', id)
+            .single();
+        
+        if (errorGet) {
+            console.error('[zonas] Error obteniendo zona para actualizar:', errorGet.message);
+            return null;
+        }
+        
+        // Aplicar updates
+        const zonaActualizada = {
+            id: zonaActual.id,
+            nombre: updates.nombre !== undefined ? updates.nombre : zonaActual.nombre,
+            envio: updates.envio !== undefined ? Number(updates.envio) : zonaActual.envio,
+            center_lat: updates.center?.lat !== undefined ? Number(updates.center.lat) : zonaActual.center_lat,
+            center_lng: updates.center?.lng !== undefined ? Number(updates.center.lng) : zonaActual.center_lng,
+            radius_m: updates.radiusM !== undefined ? Number(updates.radiusM) : zonaActual.radius_m
+        };
+        
+        const { data, error } = await supabase
+            .from('zonas_delivery')
+            .upsert(zonaActualizada, { onConflict: 'id' })
+            .select()
+            .single();
+        
+        if (error) {
+            console.error('[zonas] Error actualizando zona:', error.message);
+            return null;
+        }
+        
+        const zonaNormalizada = normalizarZonaDesdeSupabase(data);
+        console.log('[zonas] ✓ Zona actualizada:', zonaNormalizada.nombre);
+        return zonaNormalizada;
+        
+    } catch (e) {
+        console.error('[zonas] Excepción actualizando zona:', e.message);
+        return null;
+    }
+}
+
+// ===== ELIMINAR ZONA =====
+/**
+ * Eliminar zona de Supabase
+ * @param {string} id - ID de la zona
+ * @returns {Promise<boolean>} true si se eliminó, false si error
+ */
+async function eliminarZona(id) {
+    console.log('[zonas] Eliminando zona de Supabase:', id);
+    
+    const supabase = getSupabase();
+    
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[zonas] Supabase no disponible');
+        return false;
+    }
+    
+    try {
+        const { error } = await supabase
+            .from('zonas_delivery')
+            .delete()
+            .eq('id', id);
+        
+        if (error) {
+            console.error('[zonas] Error eliminando zona:', error.message);
+            return false;
+        }
+        
+        console.log('[zonas] ✓ Zona eliminada:', id);
+        return true;
+        
+    } catch (e) {
+        console.error('[zonas] Excepción eliminando zona:', e.message);
+        return false;
+    }
+}
+
+// ===== CALCULAR DELIVERY =====
+/**
+ * Calcular costo de delivery basado en coordenadas
+ * Mantiene compatible con calculateDelivery() existente
+ * @param {Object} coords - { lat, lng }
+ * @param {Array} zonas - Array de zonas (si no se pasa, obtiene de Supabase)
+ * @returns {Promise<Object>} { ok, zone, costoEnvio, distanceM }
+ */
+async function calcularDeliveryAsync(coords, zonas = null) {
+    console.log('[zonas] Calculando delivery para coords:', coords);
+    
+    let zonasParaUsar = zonas;
+    
+    if (!zonasParaUsar) {
+        zonasParaUsar = await obtenerZonas();
+    }
+    
+    // Usar la función existente de delivery-calc.js si está disponible
+    if (typeof calculateDelivery === 'function') {
+        const resultado = calculateDelivery(coords, zonasParaUsar);
+        console.log('[zonas] ✓ Delivery calculado:', resultado.ok ? 'OK' : 'Fuera de zonas');
+        return resultado;
+    }
+    
+    console.warn('[zonas] calculateDelivery() no disponible');
+    return { ok: false, zone: null, costoEnvio: 0, reason: 'no_calculator' };
+}
+
+// ===== EXPORTACIÓN =====
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        obtenerZonas,
+        guardarZonas,
+        crearZona,
+        actualizarZona,
+        eliminarZona,
+        calcularDeliveryAsync
+    };
+}

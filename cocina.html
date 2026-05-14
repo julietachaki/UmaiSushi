@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocina - Umai Sushi</title>
+    <meta name="description" content="Gestión de pedidos en Umai Sushi.">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container">
+            <div class="logo">
+                <a href="index.html">Umai SushiI</a>
+            </div>
+            <nav class="nav-desktop">
+                <a href="index.html#menu">Menú</a>
+                <a href="pedido.html">Mi Pedido</a>
+                <a href="index.html#horarios">Horarios</a>
+            </nav>
+            <div class="hamburger" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar Mobile -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+        <div class="sidebar-content">
+            <a href="index.html">Inicio</a>
+            <a href="index.html#menu" onclick="toggleMenu()">Menú</a>
+            <a href="pedido.html" onclick="toggleMenu()">Mi Pedido</a>
+            <a href="index.html#horarios" onclick="toggleMenu()">Horarios</a>
+        </div>
+    </div>
+
+    <!-- Cocina Section -->
+    <section id="cocina" class="pedido">
+        <div class="container">
+            <h2>Gestión de Pedidos</h2>
+            <div id="cocina-content">
+                <!-- Contenido dinámico aquí -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>Instagram: <a href="https://instagram.com/umaisushi.sr" target="_blank">@umaisushi.sr</a></p>
+            <p>Ubicación: San Rafael</p>
+            <p>Telefono: +542604539727</p>
+        </div>
+    </footer>
+    
+    <!-- SUPABASE & SERVICIOS (Migración a Supabase) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="services/supabase.js"></script>
+    <script src="services/productos.service.js"></script>
+    <script src="services/pedidos.service.js"></script>
+    <script src="services/zonas.service.js"></script>
+    
+    <!-- SCRIPTS ORIGINALES -->
+    <script src="order-shared.js"></script>
+    <script src="menu-store.js"></script>
+    <script src="script.js"></script>
+    <script src="delivery-calc.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="maps-osm.js"></script>
+    <script src="zonas-leaflet.js"></script>
+    <script src="sheets.js"></script>
+    <script src="cocina.js"></script>
+</body>
+</html>

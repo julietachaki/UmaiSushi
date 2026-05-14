@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedido - Umai Sushi</title>
+    <meta name="description" content="Completa tu pedido en Umai Sushi. Selecciona opciones de pago y entrega.">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container">
+            <div class="logo">
+                <a href="index.html">Umai Sushi</a>
+            </div>
+            <nav class="nav-desktop">
+                <a href="index.html#menu">Menú</a>
+                <a href="pedido.html">Mi Pedido</a>
+                <a href="index.html#horarios">Horarios</a>
+            </nav>
+            <div class="hamburger" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </header>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+        <div class="sidebar-content">
+            <a href="index.html">Inicio</a>
+            <a href="index.html#menu" onclick="toggleMenu()">Menú</a>
+            <a href="pedido.html" onclick="toggleMenu()">Mi Pedido</a>
+            <a href="index.html#horarios" onclick="toggleMenu()">Horarios</a>
+        </div>
+    </div>
+
+    <a href="https://wa.me/542604539727?text=Hola!%20Quiero%20hacer%20un%20pedido%20en%20Umai%20Sushi%20🍣" class="whatsapp-float" target="_blank" aria-label="Contactar por WhatsApp">
+        <img src="https://img.icons8.com/color/48/000000/whatsapp.png" alt="WhatsApp">
+    </a>
+
+    <section id="pedido" class="pedido pedido-page-modern">
+        <div class="container">
+            <h2 class="pedido-heading">Tu pedido</h2>
+
+            <div class="pedido-layout">
+                <div class="product-list pedido-card-shell">
+                    <h3>Tu selección</h3>
+                    <div class="form-group pedido-inline-field">
+                        <label for="nombre-cliente">Nombre <span class="req">*</span></label>
+                        <input type="text" id="nombre-cliente" class="inp-modern" placeholder="Cómo te llamamos" autocomplete="name">
+                        <div id="error-nombre" class="form-error-msg"></div>
+                    </div>
+                    <div class="form-group pedido-inline-field">
+                        <label for="telefono-cliente">Teléfono <span class="req">*</span></label>
+                        <input type="tel" id="telefono-cliente" class="inp-modern" placeholder="Ej: 2604 53 9727" autocomplete="tel" inputmode="tel">
+                        <div id="error-telefono" class="form-error-msg"></div>
+                    </div>
+                    <div id="pedido-lista"></div>
+                    <div id="pedido-vacio" class="pedido-vacio-state" hidden>
+                        <p>Tu pedido está vacío.</p>
+                    </div>
+
+                    <div class="extras-block">
+                        <p class="extras-notice">Todos los pedidos salen con una salsa de soja y una salsa teriyaki.</p>
+                        <p class="extras-title">¿Querés unidades extras?</p>
+                        <div class="extra-row">
+                            <span class="extra-row-label">Extra salsa teriyaki</span>
+                            <div class="counter counter-pill">
+                                <button type="button" class="counter-btn" id="extra-less-teriyaki" aria-label="Menos teriyaki">−</button>
+                                <span class="counter-qty" id="extra-qty-teriyaki">0</span>
+                                <button type="button" class="counter-btn" id="extra-more-teriyaki" aria-label="Más teriyaki">+</button>
+                            </div>
+                        </div>
+                        <div class="extra-row">
+                            <span class="extra-row-label">Extra salsa de soja</span>
+                            <div class="counter counter-pill">
+                                <button type="button" class="counter-btn" id="extra-less-soja" aria-label="Menos soja">−</button>
+                                <span class="counter-qty" id="extra-qty-soja">0</span>
+                                <button type="button" class="counter-btn" id="extra-more-soja" aria-label="Más soja">+</button>
+                            </div>
+                        </div>
+                        <p class="extras-price-hint"><span>$500</span> cada salsa extra · se suman al total</p>
+                    </div>
+
+                    <div class="pedido-desglose" id="pedido-desglose">
+                        <div class="desglose-line"><span>Subtotal menú</span><strong data-slot="submenu">$0</strong></div>
+                        <div class="extras-desglose-wrap" data-line="extras" hidden>
+                            <div class="desglose-line"><span>Extras</span><strong data-slot="extras">$0</strong></div>
+                            <p class="desglose-sub muted" data-slot="extras-detalle"></p>
+                        </div>
+                        <div class="desglose-line" data-line="envio"><span>Envío <small data-slot="envio-zona"></small></span><strong data-slot="envio">$0</strong></div>
+                        <div class="desglose-line total-line"><span>Total</span><strong data-slot="total">$0</strong></div>
+                    </div>
+                    <a href="index.html" class="btn-secondary btn-modern-wide">Seguir comprando</a>
+                </div>
+
+                <div class="payment-card pedido-card-shell">
+                    <h4>Medio de pago</h4>
+                    <div class="option-buttons modern-options">
+                        <button type="button" class="option-btn active" data-name="pago" data-value="Efectivo">Efectivo</button>
+                        <button type="button" class="option-btn" data-name="pago" data-value="Transferencia">Transferencia</button>
+                    </div>
+                    <div id="monto-efectivo-wrap" class="field-block fade-box">
+                        <label for="monto-paga-input">¿Con cuánto pagás?</label>
+                        <input type="text" inputmode="decimal" id="monto-paga-input" class="inp-modern" placeholder="Ej: 25000">
+                        <div id="error-monto-efectivo" class="form-error-msg"></div>
+                    </div>
+                </div>
+
+                <div class="delivery-card pedido-card-shell">
+                    <h4>Entrega</h4>
+                    <div class="option-buttons modern-options">
+                        <button type="button" class="option-btn" data-name="entrega" data-value="A domicilio">A domicilio</button>
+                        <button type="button" class="option-btn active" data-name="entrega" data-value="Retiro en el local">Retiro en el local</button>
+                    </div>
+                    <div id="ubicacion-section" class="field-block ubicacion-modern">
+                        <label for="direccion-input">Dirección para delivery</label>
+                        <div class="direccion-input-row">
+                            <input type="text" id="direccion-input" class="inp-modern direccion-main" autocomplete="street-address"
+                                placeholder="Calle y número">
+                            <button type="button" id="direccion-buscar" class="btn-secondary">Buscar en mapa</button>
+                        </div>
+                        <p id="direccion-estado" class="direccion-mini muted">Tocá el mapa para marcar tu ubicación exacta. La búsqueda actualiza el punto en el mapa.</p>
+                        <div id="delivery-map" class="umai-map"></div>
+                        <div class="direccion-actions">
+                            <button type="button" id="guardar-ubicacion-btn" class="btn-primary">Guardar ubicación</button>
+                            <button type="button" id="editar-ubicacion-btn" class="btn-secondary" hidden>Editar ubicación</button>
+                        </div>
+                        <p id="delivery-zone-status" class="direccion-mini muted"></p>
+                        <p id="ubicacion-guardada-summary" class="direccion-mini muted" hidden></p>
+                        <div id="error-direccion" class="form-error-msg"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="confirm-section pedido-footer-cta">
+                <div id="error-final" class="form-error-msg form-error-msg-center"></div>
+                <button id="confirmar-btn" type="button" class="btn-primary btn-modern-submit">Confirmar pedido por WhatsApp</button>
+                <p class="confirm-hint muted">Presioná confirmar y coordinamos tu entrega enseguida</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Instagram: <a href="https://instagram.com/umaisushi.sr" target="_blank">@umaisushi.sr</a></p>
+            <p>Ubicación: San Rafael</p>
+            <p>Telefono: +542604539727</p>
+        </div>
+    </footer>
+
+    <!-- SUPABASE & SERVICIOS (Migración a Supabase) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="services/supabase.js"></script>
+    <script src="services/productos.service.js"></script>
+    <script src="services/pedidos.service.js"></script>
+    <script src="services/zonas.service.js"></script>
+    
+    <!-- SCRIPTS ORIGINALES -->
+    <script src="order-shared.js"></script>
+    <script src="menu-store.js"></script>
+    <script src="delivery-calc.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="maps-osm.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
