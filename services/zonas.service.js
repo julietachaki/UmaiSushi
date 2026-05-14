@@ -144,37 +144,70 @@ async function guardarZonas(zonas) {
         }
         
         const idsExistentes = (existentes || []).map(z => z.id);
-        const idsNuevos = zonasParaSupabase.map(z => z.id);
+        const idsNuevos = zonasParaSupabase.map(z => z.id).filter(Boolean);
         const idsAEliminar = idsExistentes.filter(id => !idsNuevos.includes(id));
         
         // Eliminar zonas obsoletas
-        for (const id of idsAEliminar) {
-            await supabase
+        if (idsAEliminar.length) {
+            const { error: deleteError } = await supabase
                 .from('zonas_delivery')
                 .delete()
-                .eq('id', id);
+                .in('id', idsAEliminar);
+
+            if (deleteError) {
+                console.error('[zonas] Error eliminando zonas:', deleteError.message);
+                return null;
+            }
         }
-        
-        // UPSERT todas las zonas
-        const { data, error } = await supabase
+        // Separar nuevas y existentes
+        const zonasExistentes = zonasParaSupabase.filter(
+            z => typeof z.id === 'string' && _UUID_REGEX.test(z.id)
+        );
+
+        const zonasNuevas = zonasParaSupabase.filter(
+            z => !z.id || !_UUID_REGEX.test(z.id)
+        );
+
+        // Actualizar existentes
+        if (zonasExistentes.length) {
+            const { error: errorUpdate } = await supabase
+                .from('zonas_delivery')
+                .upsert(zonasExistentes, { onConflict: 'id' });
+
+            if (errorUpdate) {
+                console.error('[zonas] Error actualizando zonas:', errorUpdate.message);
+                return null;
+            }
+        }
+
+        // Insertar nuevas
+        if (zonasNuevas.length) {
+            const { error: errorInsert } = await supabase
+                .from('zonas_delivery')
+                .insert(zonasNuevas);
+
+            if (errorInsert) {
+                console.error('[zonas] Error insertando zonas:', errorInsert.message);
+                return null;
+            }
+        }
+
+        // Obtener resultado final
+        const { data: finalData, error: finalError } = await supabase
             .from('zonas_delivery')
-            .upsert(zonasParaSupabase, { onConflict: 'id' })
-            .select();
-        
-        if (error) {
-            console.error('[zonas] Error guardando zonas:', error.message);
+            .select('*')
+            .order('nombre', { ascending: true });
+
+        if (finalError) {
+            console.error('[zonas] Error obteniendo zonas finales:', finalError.message);
             return null;
         }
-        
-        if (Array.isArray(data)) {
-            const zonasNormalizadas = normalizarZonasDesdeSupabase(data);
-            console.log('[zonas] ✓ Guardadas en Supabase:', data.length, 'zonas');
-            return zonasNormalizadas;
-        }
-        
-        console.warn('[zonas] UPSERT no retornó datos');
-        return null;
-        
+
+        const zonasNormalizadas = normalizarZonasDesdeSupabase(finalData);
+
+        console.log('[zonas] ✓ Guardadas en Supabase:', zonasNormalizadas.length, 'zonas');
+
+        return zonasNormalizadas;
     } catch (e) {
         console.error('[zonas] Excepción guardando zonas:', e.message);
         return null;
@@ -200,17 +233,18 @@ async function crearZona(zona) {
     try {
         // Asignar ID si no tiene
         const zonaParaSupabase = {
-            id: zona.id || 'z-' + Math.random().toString(36).slice(2, 11),
             nombre: zona.nombre,
             envio: Number(zona.envio) || 0,
             center_lat: Number(zona.center?.lat || 0),
             center_lng: Number(zona.center?.lng || 0),
             radius_m: Number(zona.radiusM) || 1500
         };
-        
+        if (typeof zona.id === 'string' && _UUID_REGEX.test(zona.id)) {
+            zonaParaSupabase.id = zona.id;
+        }
         const { data, error } = await supabase
             .from('zonas_delivery')
-            .upsert(zonaParaSupabase, { onConflict: 'id' })
+            .insert(zonaParaSupabase)
             .select()
             .single();
         

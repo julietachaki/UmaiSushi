@@ -99,7 +99,7 @@ function crearFilaZonaHtml(zona) {
     const nombre = zona && zona.nombre != null ? String(zona.nombre) : '';
     const envio = Number(zona && zona.envio) || 0;
     const keys = zona && zona.palabrasClave != null ? String(zona.palabrasClave) : '';
-    const idRaw = zona && zona.id ? String(zona.id) : 'z-' + Math.random().toString(36).slice(2, 11);
+    const idRaw = zona?.id ? String(zona.id) : '';;
     const idAttr = umasushiEscapeHtml(idRaw);
     return `<tr data-zone-id="${idAttr}">
       <td><input class="inp-modern zona-nombre" type="text" value="${umasushiEscapeHtml(nombre)}"></td>
