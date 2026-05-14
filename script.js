@@ -13,10 +13,15 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     sections.forEach(section => observer.observe(section));
 
-    // ===== CARGA DE PRODUCTOS (solo Supabase → productosCache en memoria) =====
+    // ===== CARGA DE DATOS (solo Supabase) =====
+    // Productos → productosCache (menu-store.js)
+    // Zonas    → umasushiZonasCache (order-shared.js)
     console.log('[app] Inicializando carga de datos...');
-    await cargarProductosConSupabase();
-    
+    await Promise.all([
+        cargarProductosConSupabase(),
+        typeof cargarZonasConSupabase === 'function' ? cargarZonasConSupabase() : Promise.resolve()
+    ]);
+
     if (window.location.pathname.includes('pedido.html')) {
         renderPedido();
         inicializarPedidoUI();
@@ -26,6 +31,36 @@ document.addEventListener('DOMContentLoaded', async function () {
         actualizarStickyBar();
     }
 });
+
+/**
+ * Cargar zonas desde Supabase y poblar `umasushiZonasCache` (order-shared.js).
+ * Después de esto, `obtenerZonasDelivery()` lee síncrono desde el cache.
+ */
+async function cargarZonasConSupabase() {
+    try {
+        let intentos = 0;
+        while (!isSupabaseReady() && intentos < 10) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            intentos++;
+        }
+        if (!isSupabaseReady()) {
+            console.warn('[app] Supabase no listo — zonas vacías');
+            return;
+        }
+        if (typeof obtenerZonas !== 'function') {
+            console.warn('[app] obtenerZonas no disponible');
+            return;
+        }
+        const zonas = await obtenerZonas();
+        if (typeof umasushiZonasCache !== 'undefined') {
+            // eslint-disable-next-line no-global-assign
+            umasushiZonasCache = Array.isArray(zonas) ? zonas.slice() : [];
+            console.log('[app] ✓ Zonas cargadas:', umasushiZonasCache.length);
+        }
+    } catch (e) {
+        console.error('[app] Error cargando zonas:', e.message);
+    }
+}
 
 // ===== SUPABASE INTEGRATION - Carga de Productos =====
 /**
@@ -62,8 +97,8 @@ async function cargarProductosConSupabase() {
     } catch (e) {
         console.error('[app] Error cargando productos:', e.message);
     }
-    
-    // Si Supabase falla: mostrar error, NO usar fallback
+
+    // Supabase es la única fuente de verdad. Si falla, no inventamos datos.
     console.error('[app] No se pudieron cargar productos. Verificar conexión a Supabase.');
 }
 
@@ -207,7 +242,10 @@ function renderMenu() {
     if (!host) return;
     if (typeof initializeMenu === 'function') initializeMenu();
 
-    const menu = typeof loadMenu === 'function' ? loadMenu() : typeof obtenerMenu === 'function' ? obtenerMenu() : [];
+    // Productos del menú principal: excluir extras (es_extra=true).
+    // Los extras se muestran solo en la sección Extras del formulario de pedido.
+    const menuCompleto = typeof loadMenu === 'function' ? loadMenu() : typeof obtenerMenu === 'function' ? obtenerMenu() : [];
+    const menu = menuCompleto.filter(p => !p.es_extra);
     const cats = typeof UMASUSHI_MENU_CATEGORIAS !== 'undefined' ? UMASUSHI_MENU_CATEGORIAS : [];
 
     function cardHtml(p) {
@@ -414,9 +452,10 @@ function actualizarTotal() {
     const pedido = obtenerPedido();
     const subProd = typeof obtenerSubtotalProductos === 'function' ? obtenerSubtotalProductos(pedido) : calcularTotalSoloProductos(pedido);
 
-    const extrasCount = typeof obtenerExtrasStored === 'function' ? obtenerExtrasStored() : { teriyaki: 0, soja: 0 };
+    const extrasMap = typeof obtenerExtrasStored === 'function' ? obtenerExtrasStored() : {};
+    const extrasLines = typeof extrasLineItems === 'function' ? extrasLineItems(extrasMap) : [];
 
-    const montoExtras = typeof calcularExtrasMonto === 'function' ? calcularExtrasMonto(extrasCount) : 0;
+    const montoExtras = typeof calcularExtrasMonto === 'function' ? calcularExtrasMonto(extrasMap) : 0;
     const entregaActual = getEntregaActiva();
     const zonasLista = obtenerZonasDelivery();
     const envioDet = calculateDeliveryCompat(zonasLista);
@@ -426,17 +465,16 @@ function actualizarTotal() {
 
     const host = getEl('pedido-desglose');
     if (host) {
-        const qTer = extrasCount ? extrasCount.teriyaki || 0 : 0;
-        const qSoj = extrasCount ? extrasCount.soja || 0 : 0;
-
         host.querySelector('[data-slot="submenu"]').textContent = `$${subProd}`;
         host.querySelector('[data-slot="extras"]').textContent = `$${montoExtras}`;
         const lineExtras = host.querySelector('[data-line="extras"]');
 
-        lineExtras.hidden = !(qTer || qSoj || montoExtras > 0);
-        const pu = typeof UMASUSHI_EXTRA_PRECIO_UNIT !== 'undefined' ? UMASUSHI_EXTRA_PRECIO_UNIT : 500;
+        lineExtras.hidden = montoExtras <= 0;
+        // Detalle: "Nx Nombre extra, Mx Otro extra"
         host.querySelector('[data-slot="extras-detalle"]').textContent =
-            `${qTer} teriyaki, ${qSoj} soja · $${pu}/un.`;
+            extrasLines.map(function (l) {
+                return l.cantidad + 'x ' + (l.label || '').replace(/^Extra\s/, '');
+            }).join(', ');
 
         const lineEnvio = host.querySelector('[data-line="envio"]');
         lineEnvio.hidden = entregaActual !== 'A domicilio';
@@ -465,19 +503,71 @@ function updateTotals() {
     return actualizarTotal();
 }
 
-function setExtrasQty(which, delta) {
+/**
+ * Ajustar cantidad de un extra por su product_id.
+ * El extra es un producto de Supabase con es_extra=true.
+ */
+function setExtraQtyById(productId, delta) {
+    if (!productId) return;
     const cur = obtenerExtrasStored();
-    if (which === 'teriyaki') cur.teriyaki = Math.max(0, (cur.teriyaki || 0) + delta);
-    else if (which === 'soja') cur.soja = Math.max(0, (cur.soja || 0) + delta);
+    const nueva = Math.max(0, (cur[productId] || 0) + delta);
+    if (nueva === 0) delete cur[productId];
+    else cur[productId] = nueva;
     setLS(LS_EXTRAS, JSON.stringify(cur));
     syncExtrasUI();
     actualizarTotal();
 }
 
+/**
+ * Render dinámico de extras en pedido.html. Lista los productos con
+ * es_extra=true, cada uno con su +/-. Si no hay, muestra el mensaje vacío.
+ */
+function renderExtrasDinamicos() {
+    const host = getEl('extras-dynamic');
+    const empty = getEl('extras-empty');
+    if (!host) return;
+
+    const extrasProductos = typeof obtenerExtrasProductos === 'function' ? obtenerExtrasProductos() : [];
+    if (!extrasProductos.length) {
+        host.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+
+    const cur = obtenerExtrasStored();
+    host.innerHTML = extrasProductos
+        .map(function (p) {
+            const cantidad = cur[p.id] || 0;
+            return `
+              <div class="extra-row" data-extra-id="${umasushiEscapeHtml(p.id)}">
+                <div class="extra-row-info">
+                  <span class="extra-row-label">${umasushiEscapeHtml(p.nombre)}</span>
+                  <span class="extra-row-price muted small">$${Number(p.precio) || 0} c/u</span>
+                </div>
+                <div class="counter counter-pill">
+                  <button type="button" class="counter-btn extra-less" aria-label="Menos">−</button>
+                  <span class="counter-qty extra-qty">${cantidad}</span>
+                  <button type="button" class="counter-btn extra-more" aria-label="Más">+</button>
+                </div>
+              </div>`;
+        })
+        .join('');
+}
+
+/**
+ * Refresca solo los contadores numéricos de cada extra dinámico (no
+ * vuelve a montar el HTML).
+ */
 function syncExtrasUI() {
-    const ex = obtenerExtrasStored();
-    setText('extra-qty-teriyaki', String(ex.teriyaki || 0));
-    setText('extra-qty-soja', String(ex.soja || 0));
+    const host = getEl('extras-dynamic');
+    if (!host) return;
+    const cur = obtenerExtrasStored();
+    host.querySelectorAll('[data-extra-id]').forEach(function (row) {
+        const id = row.getAttribute('data-extra-id');
+        const qtyEl = row.querySelector('.extra-qty');
+        if (qtyEl) qtyEl.textContent = String(cur[id] || 0);
+    });
 }
 
 function renderMontoEfectivoUI() {
@@ -882,11 +972,20 @@ function inicializarPedidoUI() {
         });
     }
 
-    document.querySelector('#extra-less-teriyaki')?.addEventListener('click', () => setExtrasQty('teriyaki', -1));
-    document.querySelector('#extra-more-teriyaki')?.addEventListener('click', () => setExtrasQty('teriyaki', 1));
-    document.querySelector('#extra-less-soja')?.addEventListener('click', () => setExtrasQty('soja', -1));
-    document.querySelector('#extra-more-soja')?.addEventListener('click', () => setExtrasQty('soja', 1));
-    syncExtrasUI();
+    // Extras dinámicos (productos con es_extra=true desde Supabase)
+    renderExtrasDinamicos();
+    const extrasHost = getEl('extras-dynamic');
+    if (extrasHost) {
+        extrasHost.addEventListener('click', function (e) {
+            const btnLess = e.target.closest('.extra-less');
+            const btnMore = e.target.closest('.extra-more');
+            if (!btnLess && !btnMore) return;
+            const row = e.target.closest('[data-extra-id]');
+            if (!row) return;
+            const id = row.getAttribute('data-extra-id');
+            setExtraQtyById(id, btnLess ? -1 : 1);
+        });
+    }
 
     const montoInput = getEl('monto-paga-input');
     if (montoInput) {
@@ -988,7 +1087,9 @@ function confirmarPedido() {
         montoPagaraTxt = String(rawMont);
     }
 
-    const extrasSnapshot = obtenerExtrasStored();
+    // Extras: estado en vivo (map) + snapshot congelado para guardar
+    const extrasMap = obtenerExtrasStored();
+    const extrasSnapshot = typeof extrasLineItems === 'function' ? extrasLineItems(extrasMap) : [];
     const fechaHora = formatPedidoTimestamp(new Date());
 
     let ubicacionLink = '';
@@ -1010,11 +1111,11 @@ function confirmarPedido() {
     }
 
     const subProd = obtenerSubtotalProductos(pedido);
-    const montExt = calcularExtrasMonto(extrasSnapshot);
+    const montExt = calcularExtrasMonto(extrasMap);
 
     let totalNumerico = obtenerTotalPedidoNumerico(
         pedido,
-        extrasSnapshot,
+        extrasMap,
         entrega === 'A domicilio' && zonaCoincidio ? costoEnvio : 0
     );
 
@@ -1023,7 +1124,9 @@ function confirmarPedido() {
         telefono,
         productos: pedido,
         subtotalMenu: subProd,
-        extras: { ...extrasSnapshot },
+        // Snapshot congelado de extras: array de line items con precio y nombre
+        // al momento de la compra. Sobrevive a borrar/renombrar el producto.
+        extras: extrasSnapshot,
         extrasMonto: montExt,
         costoEnvio: entrega === 'A domicilio' && zonaCoincidio ? costoEnvio : 0,
         zonaNombre,

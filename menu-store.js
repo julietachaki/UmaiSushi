@@ -173,6 +173,7 @@ function normalizeMenuItem(raw) {
     var id = umasushiSafeText(raw && raw.id) || umasushiUid('p');
 
     var tags = raw && typeof raw.tags === 'object' && raw.tags ? raw.tags : {};
+    var esExtra = !!(raw && raw.es_extra);
     return {
         id: id,
         nombre: nombre,
@@ -180,6 +181,7 @@ function normalizeMenuItem(raw) {
         precio: precio,
         imagen: imagen,
         categoria: categoria,
+        es_extra: esExtra,
         tags: {
             veggi: !!tags.veggi,
             glutenfree: tags.glutenfree == null ? true : !!tags.glutenfree
@@ -196,12 +198,25 @@ function productoToSupabaseRow(item) {
         precio: item.precio,
         categoria: item.categoria,
         imagen: item.imagen,
-        activo: true
+        activo: true,
+        es_extra: !!item.es_extra
     };
     if (item.tags && typeof item.tags === 'object') {
         row.tags = item.tags;
     }
     return row;
+}
+
+/** Listar productos que son extras (es_extra=true). */
+function obtenerExtrasProductos() {
+    if (!productosCache || !productosCache.length) return [];
+    return productosCache
+        .map(function (p) {
+            return normalizeMenuItem(p);
+        })
+        .filter(function (x) {
+            return x.es_extra && x.nombre && x.precio >= 0;
+        });
 }
 
 function obtenerMenu() {

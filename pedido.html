@@ -67,25 +67,11 @@
                     </div>
 
                     <div class="extras-block">
-                        <p class="extras-notice">Todos los pedidos salen con una salsa de soja y una salsa teriyaki.</p>
-                        <p class="extras-title">¿Querés unidades extras?</p>
-                        <div class="extra-row">
-                            <span class="extra-row-label">Extra salsa teriyaki</span>
-                            <div class="counter counter-pill">
-                                <button type="button" class="counter-btn" id="extra-less-teriyaki" aria-label="Menos teriyaki">−</button>
-                                <span class="counter-qty" id="extra-qty-teriyaki">0</span>
-                                <button type="button" class="counter-btn" id="extra-more-teriyaki" aria-label="Más teriyaki">+</button>
-                            </div>
-                        </div>
-                        <div class="extra-row">
-                            <span class="extra-row-label">Extra salsa de soja</span>
-                            <div class="counter counter-pill">
-                                <button type="button" class="counter-btn" id="extra-less-soja" aria-label="Menos soja">−</button>
-                                <span class="counter-qty" id="extra-qty-soja">0</span>
-                                <button type="button" class="counter-btn" id="extra-more-soja" aria-label="Más soja">+</button>
-                            </div>
-                        </div>
-                        <p class="extras-price-hint"><span>$500</span> cada salsa extra · se suman al total</p>
+                        <p class="extras-title">¿Querés agregar extras?</p>
+                        <div id="extras-dynamic"></div>
+                        <p class="extras-empty muted small" id="extras-empty" hidden>
+                            No hay extras configurados. Agregalos desde el panel cocina marcando "Es extra" en el producto.
+                        </p>
                     </div>
 
                     <div class="pedido-desglose" id="pedido-desglose">
@@ -154,6 +140,9 @@
             <p>Telefono: +542604539727</p>
         </div>
     </footer>
+
+    <!-- CONFIG (debe ir antes que todo) -->
+    <script src="config.js"></script>
 
     <!-- SUPABASE & SERVICIOS (Migración a Supabase) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

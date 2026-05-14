@@ -1,297 +1,183 @@
 /**
  * PEDIDOS SERVICE - UmaiSushi
- * 
- * Gestión de pedidos con sincronización Supabase
- * Integración con WhatsApp (sin eliminar la actual)
- * 
- * Tabla Supabase: pedidos
- * Campos: id, cliente, telefono, direccion_texto, coords, maps_url, productos, total, estado, fecha
+ *
+ * Única fuente de verdad: Supabase. NO usa localStorage en absoluto.
+ * Tabla: pedidos (ver supabase/migrations/20260514120000_init.sql).
+ *
+ * El pedido se guarda como snapshot: productos/extras llevan precio
+ * y cantidad congelados al momento de la compra.
  */
 
-// ===== CREAR PEDIDO =====
+const PEDIDO_ESTADOS_VALIDOS = ['nuevo', 'preparando', 'listo', 'entregado', 'cancelado'];
+
 /**
- * Crear nuevo pedido en Supabase
- * Mantiene integración con WhatsApp
- * @param {Object} pedidoData - { cliente, telefono, direccion_texto, coords, maps_url, productos, total }
- * @returns {Promise<Object>} Pedido creado o null
+ * Construir la fila a insertar en `pedidos` a partir del shape del cliente.
+ * Acepta tanto la forma "vieja" (total, costoEnvio, extrasMonto) como la
+ * nueva (envio, extras_total) para no romper llamadas existentes mientras
+ * se migra el frontend.
+ * @private
  */
-async function crearPedido(pedidoData) {
-    console.log('[pedidos] Creando pedido...');
-    
-    const supabase = getSupabase();
-    
-    // Preparar datos del pedido
-    const pedido = {
-        cliente: pedidoData.cliente || 'Cliente',
-        telefono: pedidoData.telefono || '',
-        direccion_texto: pedidoData.direccion_texto || '',
-        coords: pedidoData.coords || null,
-        maps_url: pedidoData.maps_url || '',
-        productos: pedidoData.productos || [],
-        total: Number(pedidoData.total) || 0,
-        estado: 'nuevo',
-        fecha: new Date().toISOString()
+function pedidoToRow(p) {
+    if (!p || typeof p !== 'object') return null;
+
+    const productos = Array.isArray(p.productos) ? p.productos : [];
+    const extras = p.extras && typeof p.extras === 'object' ? p.extras : {};
+    const subtotal = Number(p.subtotal ?? p.subtotalMenu ?? 0) || 0;
+    const extras_total = Number(p.extras_total ?? p.extrasMonto ?? 0) || 0;
+    const envio = Number(p.envio ?? p.costoEnvio ?? 0) || 0;
+    const total = Number(p.total ?? p.totalFinal ?? subtotal + extras_total + envio) || 0;
+
+    return {
+        cliente: String(p.cliente || 'Cliente'),
+        telefono: p.telefono ? String(p.telefono) : null,
+        direccion_texto: p.direccion_texto || null,
+        maps_url: p.maps_url || null,
+        coords: p.coords || null,
+        productos,
+        extras,
+        subtotal,
+        extras_total,
+        envio,
+        total,
+        metodo_pago: p.metodo_pago || p.pago || null,
+        monto_efectivo: p.monto_efectivo ?? p.montoPagaraCon ?? null,
+        entrega: p.entrega || null,
+        estado: p.estado || 'nuevo'
+        // `fecha` lo setea Postgres con default now()
     };
-    
-    // Si Supabase está listo, guardar allí
-    if (supabase && isSupabaseReady()) {
-        try {
-            const { data, error } = await supabase
-                .from('pedidos')
-                .insert([pedido])
-                .select();
-            
-            if (error) {
-                console.error('[pedidos] Error guardando en Supabase:', error.message);
-                // Fallback a localStorage
-                return crearPedidoLocal(pedido);
-            }
-            
-            if (data && data.length > 0) {
-                console.log('[pedidos] ✓ Pedido guardado en Supabase:', data[0].id);
-                guardarPedidoLocal(data[0]);
-                return data[0];
-            }
-        } catch (e) {
-            console.error('[pedidos] Excepción:', e.message);
-            return crearPedidoLocal(pedido);
-        }
-    }
-    
-    // Fallback a localStorage
-    console.log('[pedidos] Supabase no disponible, guardando en localStorage');
-    return crearPedidoLocal(pedido);
 }
 
 /**
- * Crear pedido en localStorage
- * @private
+ * Crear nuevo pedido en Supabase.
+ * @param {Object} pedidoData
+ * @returns {Promise<Object|null>} fila insertada (con id real) o null
  */
-function crearPedidoLocal(pedido) {
+async function crearPedido(pedidoData) {
+    const supabase = typeof getSupabase === 'function' ? getSupabase() : null;
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[pedidos] Supabase no disponible — no se puede crear pedido');
+        return null;
+    }
+
+    const row = pedidoToRow(pedidoData);
+    if (!row) {
+        console.error('[pedidos] pedidoData inválido');
+        return null;
+    }
+
     try {
-        pedido.id = 'ped-' + Math.random().toString(36).slice(2, 9) + '-' + Date.now().toString(36);
-        
-        // Guardar en localStorage temporal
-        localStorage.setItem('ultimoPedido', JSON.stringify(pedido));
-        console.log('[pedidos] ✓ Pedido guardado en localStorage:', pedido.id);
-        
-        return pedido;
+        const { data, error } = await supabase.from('pedidos').insert([row]).select().single();
+        if (error) {
+            console.error('[pedidos] Error INSERT:', error.message);
+            return null;
+        }
+        console.log('[pedidos] ✓ Pedido creado:', data.id);
+        return data;
     } catch (e) {
-        console.error('[pedidos] Error guardando en localStorage:', e.message);
+        console.error('[pedidos] Excepción INSERT:', e.message);
         return null;
     }
 }
 
-// ===== OBTENER PEDIDOS =====
 /**
- * Obtener todos los pedidos
- * Intenta desde Supabase, fallback a localStorage
- * @param {Object} opciones - { limite, offset, estado }
- * @returns {Promise<Array>} Array de pedidos
+ * Obtener todos los pedidos (con filtros opcionales).
+ * @param {{ limite?: number, offset?: number, estado?: string }} opciones
+ * @returns {Promise<Array>}
  */
 async function obtenerPedidos(opciones = {}) {
-    console.log('[pedidos] Obteniendo pedidos...');
-    
-    const supabase = getSupabase();
-    const limite = opciones.limite || 50;
-    const offset = opciones.offset || 0;
-    const estado = opciones.estado || null;
-    
-    // Si Supabase está listo, intentar obtener desde allí
-    if (supabase && isSupabaseReady()) {
-        try {
-            let query = supabase
-                .from('pedidos')
-                .select('*')
-                .order('fecha', { ascending: false });
-            
-            if (estado) {
-                query = query.eq('estado', estado);
-            }
-            
-            const { data, error } = await query
-                .range(offset, offset + limite - 1);
-            
-            if (error) {
-                console.warn('[pedidos] Error Supabase:', error.message);
-                return obtenerPedidosLocal();
-            }
-            
-            if (Array.isArray(data)) {
-                console.log('[pedidos] ✓ Cargados desde Supabase:', data.length, 'pedidos');
-                return data;
-            }
-        } catch (e) {
-            console.warn('[pedidos] Excepción Supabase:', e.message);
-            return obtenerPedidosLocal();
-        }
+    const supabase = typeof getSupabase === 'function' ? getSupabase() : null;
+    if (!supabase || !isSupabaseReady()) {
+        console.error('[pedidos] Supabase no disponible');
+        return [];
     }
-    
-    // Fallback a localStorage
-    console.log('[pedidos] Supabase no disponible, usando localStorage');
-    return obtenerPedidosLocal();
-}
 
-/**
- * Obtener pedidos desde localStorage
- * @private
- */
-async function obtenerPedidosLocal() {
+    const limite = Number(opciones.limite) > 0 ? Number(opciones.limite) : 50;
+    const offset = Number(opciones.offset) >= 0 ? Number(opciones.offset) : 0;
+    const estado = opciones.estado || null;
+
     try {
-        let pedidos = [];
-        
-        // Intentar obtener desde la clave de "última cocina" si existe
-        const ultimoPedido = localStorage.getItem('ultimoPedido');
-        if (ultimoPedido) {
-            try {
-                const ped = JSON.parse(ultimoPedido);
-                if (ped && ped.id) pedidos.push(ped);
-            } catch (e) {
-                // Ignorar si no es JSON válido
-            }
+        let query = supabase.from('pedidos').select('*').order('fecha', { ascending: false });
+        if (estado) query = query.eq('estado', estado);
+        const { data, error } = await query.range(offset, offset + limite - 1);
+        if (error) {
+            console.error('[pedidos] Error SELECT:', error.message);
+            return [];
         }
-        
-        console.log('[pedidos] Cargados desde localStorage:', pedidos.length, 'pedidos');
-        return pedidos;
+        return Array.isArray(data) ? data : [];
     } catch (e) {
-        console.error('[pedidos] Error en localStorage:', e.message);
+        console.error('[pedidos] Excepción SELECT:', e.message);
         return [];
     }
 }
 
 /**
- * Guardar pedido en localStorage (copia)
- * @private
+ * Obtener un pedido por id (UUID).
+ * @param {string} id
+ * @returns {Promise<Object|null>}
  */
-function guardarPedidoLocal(pedido) {
-    try {
-        localStorage.setItem('ultimoPedido', JSON.stringify(pedido));
-    } catch (e) {
-        console.warn('[pedidos] Error guardando en localStorage:', e.message);
-    }
-}
 async function obtenerPedidoPorId(id) {
-    const supabase = getSupabase();
-
+    const supabase = typeof getSupabase === 'function' ? getSupabase() : null;
     if (!supabase || !isSupabaseReady()) {
+        console.error('[pedidos] Supabase no disponible');
         return null;
     }
+    if (!id) return null;
 
     try {
-        const { data, error } = await supabase
-            .from('pedidos')
-            .select('*')
-            .eq('id', id)
-            .single();
-
+        const { data, error } = await supabase.from('pedidos').select('*').eq('id', id).single();
         if (error) {
-            console.error('[pedidos] Error obteniendo pedido:', error.message);
+            console.error('[pedidos] Error obtenerPedidoPorId:', error.message);
             return null;
         }
-
         return data;
     } catch (e) {
-        console.error('[pedidos] Excepción:', e.message);
+        console.error('[pedidos] Excepción obtenerPedidoPorId:', e.message);
         return null;
     }
 }
-// ===== ACTUALIZAR ESTADO =====
+
 /**
- * Actualizar estado del pedido
- * Estados: nuevo, preparando, listo, entregado, cancelado
- * @param {string} id - ID del pedido
- * @param {string} nuevoEstado - Nuevo estado
- * @returns {Promise<Object>} Pedido actualizado o null
+ * Actualizar estado del pedido.
+ * @param {string} id
+ * @param {'nuevo'|'preparando'|'listo'|'entregado'|'cancelado'} nuevoEstado
+ * @returns {Promise<Object|null>}
  */
 async function actualizarEstadoPedido(id, nuevoEstado) {
-    console.log('[pedidos] Actualizando estado:', id, '→', nuevoEstado);
-    
-    const supabase = getSupabase();
-    
-    const estadosValidos = ['nuevo', 'preparando', 'listo', 'entregado', 'cancelado'];
-    if (!estadosValidos.includes(nuevoEstado)) {
-        console.error('[pedidos] Estado no válido:', nuevoEstado);
+    if (!PEDIDO_ESTADOS_VALIDOS.includes(nuevoEstado)) {
+        console.error('[pedidos] Estado inválido:', nuevoEstado);
         return null;
     }
-    
+
+    const supabase = typeof getSupabase === 'function' ? getSupabase() : null;
     if (!supabase || !isSupabaseReady()) {
-        console.log('[pedidos] Supabase no disponible, actualizando en localStorage');
-        return null; // No actualizar en localStorage para evitar inconsistencias
+        console.error('[pedidos] Supabase no disponible');
+        return null;
     }
-    
+
     try {
         const { data, error } = await supabase
             .from('pedidos')
             .update({ estado: nuevoEstado })
             .eq('id', id)
-            .select();
-        
+            .select()
+            .single();
         if (error) {
-            console.error('[pedidos] Error actualizando en Supabase:', error.message);
+            console.error('[pedidos] Error UPDATE estado:', error.message);
             return null;
         }
-        
-        if (data && data.length > 0) {
-            console.log('[pedidos] ✓ Estado actualizado en Supabase:', id, '→', nuevoEstado);
-            return data[0];
-        }
+        console.log('[pedidos] ✓ Estado:', id, '→', nuevoEstado);
+        return data;
     } catch (e) {
-        console.error('[pedidos] Excepción:', e.message);
-    }
-    
-    return null;
-}
-
-// ===== INTEGRACIÓN CON WHATSAPP =====
-/**
- * Enviar pedido por WhatsApp DESPUÉS de guardar en Supabase
- * Mantiene la integración actual con WhatsApp
- * @param {Object} pedido - Pedido creado
- * @param {string} numeroPropietario - Número de WhatsApp del dueño
- * @returns {string} URL de WhatsApp para abrir
- */
-
-// ===== SINCRONIZAR =====
-/**
- * Sincronizar pedidos entre Supabase y localStorage
- */
-async function sincronizarPedidos() {
-    console.log('[pedidos] Sincronizando...');
-    
-    const supabase = getSupabase();
-    
-    if (!supabase || !isSupabaseReady()) {
-        console.log('[pedidos] Supabase no disponible');
-        return false;
-    }
-    
-    try {
-        const { data, error } = await supabase
-            .from('pedidos')
-            .select('*')
-            .order('fecha', { ascending: false })
-            .limit(100);
-        
-        if (error) {
-            console.error('[pedidos] Error sincronizando:', error.message);
-            return false;
-        }
-        
-        console.log('[pedidos] ✓ Sincronización completada:', data?.length || 0, 'pedidos');
-        return true;
-    } catch (e) {
-        console.error('[pedidos] Excepción sincronizando:', e.message);
-        return false;
+        console.error('[pedidos] Excepción UPDATE estado:', e.message);
+        return null;
     }
 }
 
-// ===== EXPORTACIÓN =====
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         crearPedido,
         obtenerPedidos,
-        actualizarEstadoPedido,
         obtenerPedidoPorId,
-        sincronizarPedidos
+        actualizarEstadoPedido
     };
 }

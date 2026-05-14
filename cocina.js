@@ -29,14 +29,31 @@ function subtotalMenuPedido(p) {
         : 0;
 }
 
+/**
+ * Devuelve los extras de un pedido en un shape que `extrasLineItems`
+ * pueda interpretar. Soporta:
+ *  - array snapshot (nueva shape, vive en pedidos.extras como jsonb)
+ *  - map { <id>: cantidad } (live cart)
+ *  - legacy { teriyaki, soja } (pedidos viejos)
+ */
 function extrasDesdePedido(p) {
-    if (p.extras && typeof p.extras === 'object') {
-        return {
-            teriyaki: Math.max(0, parseInt(p.extras.teriyaki, 10) || 0),
-            soja: Math.max(0, parseInt(p.extras.soja, 10) || 0)
-        };
+    if (!p || !p.extras) return [];
+    if (Array.isArray(p.extras)) return p.extras;
+    if (typeof p.extras === 'object') {
+        // ¿Tiene keys legacy? Reconstruir como array placeholder.
+        var isLegacy = ('teriyaki' in p.extras) || ('soja' in p.extras);
+        if (isLegacy) {
+            var lines = [];
+            var t = Math.max(0, parseInt(p.extras.teriyaki, 10) || 0);
+            var s = Math.max(0, parseInt(p.extras.soja, 10) || 0);
+            if (t > 0) lines.push({ id: 'legacy-teriyaki', label: 'Extra salsa teriyaki', cantidad: t, precio: 500, sub: t * 500 });
+            if (s > 0) lines.push({ id: 'legacy-soja', label: 'Extra salsa de soja', cantidad: s, precio: 500, sub: s * 500 });
+            return lines;
+        }
+        // Map por id (no debería pasar en pedidos guardados, pero por las dudas)
+        return p.extras;
     }
-    return { teriyaki: 0, soja: 0 };
+    return [];
 }
 
 function listaProductosUlHtml(productos) {
@@ -216,19 +233,16 @@ function configurarHandlersZonaAdmin(container) {
                 palabrasClave
             });
         }
-        try {
-            localStorage.setItem(UMASUSHI_LS_ZONAS, JSON.stringify(zonas));
-            showFb('Zonas guardadas.', true);
-        } catch (err) {
-            showFb('No se pudo guardar.', false);
-        }
+        // Admin simple legacy: ya no se usa (la versión activa es la de
+        // Leaflet en zonas-leaflet.js, que persiste en Supabase). Si por
+        // algún motivo cae acá, no escribimos a localStorage.
+        showFb('Usá el admin de zonas en el panel cocina (con mapa).', false);
     });
 
     container.querySelector('#zona-ejemplo').addEventListener('click', () => {
         const z = typeof defaultDeliveryZones === 'function' ? defaultDeliveryZones() : [];
         tbody.innerHTML = z.map(crearFilaZonaHtml).join('');
-        localStorage.setItem(UMASUSHI_LS_ZONAS, JSON.stringify(z));
-        showFb('Cargamos el ejemplo Centro / Cuadro Nacional.', true);
+        showFb('Vista previa de ejemplo (no se guarda — usá el admin con mapa).', false);
     });
 }
 
@@ -368,6 +382,12 @@ function menuAdminHtml(menu) {
                 <label class="checkbox-label"><input id="admin-prod-glutenfree" type="checkbox"> Gluten free</label>
               </div>
               <div class="form-row">
+                <label class="checkbox-label">
+                  <input id="admin-prod-es-extra" type="checkbox">
+                  Es extra (no aparece en el menú del index, sí en pedido y cocina)
+                </label>
+              </div>
+              <div class="form-row">
                 <label>Imagen</label>
                 <div class="admin-image-picker">
                   <img id="admin-prod-image-preview" class="admin-prod-thumb admin-preview-thumb" src="/static/producto.jpeg" alt="Vista previa">
@@ -405,6 +425,7 @@ function configurarHandlersMenuAdmin(container) {
     var inputCat = container.querySelector('#admin-prod-cat');
     var inputVeggi = container.querySelector('#admin-prod-veggi');
     var inputGlutenfree = container.querySelector('#admin-prod-glutenfree');
+    var inputEsExtra = container.querySelector('#admin-prod-es-extra');
     var imagePreview = container.querySelector('#admin-prod-image-preview');
     var imageFile = container.querySelector('#admin-prod-image-file');
     var currentEditId = null;
@@ -445,6 +466,7 @@ function configurarHandlersMenuAdmin(container) {
         if (inputCat) inputCat.value = typeof UMASUSHI_MENU_CATEGORIAS !== 'undefined' ? UMASUSHI_MENU_CATEGORIAS[0] : 'Productos';
         if (inputVeggi) inputVeggi.checked = false;
         if (inputGlutenfree) inputGlutenfree.checked = false;
+        if (inputEsExtra) inputEsExtra.checked = false;
         if (imagePreview) imagePreview.src = '/static/producto.jpeg';
         if (modalMsg) modalMsg.hidden = true;
     }
@@ -459,6 +481,7 @@ function configurarHandlersMenuAdmin(container) {
             if (inputCat) inputCat.value = item.categoria || 'Productos';
             if (inputVeggi) inputVeggi.checked = !!(item.tags && item.tags.veggi);
             if (inputGlutenfree) inputGlutenfree.checked = item.tags ? !!item.tags.glutenfree : true;
+            if (inputEsExtra) inputEsExtra.checked = !!item.es_extra;
             if (imagePreview) imagePreview.src = item.imagen || '/static/producto.jpeg';
         } else {
             resetForm();
@@ -496,6 +519,7 @@ function configurarHandlersMenuAdmin(container) {
         function renderProduct(p) {
             var gluten = p.tags && p.tags.glutenfree !== false;
             var veg = p.tags && p.tags.veggi;
+            var esExtra = !!p.es_extra;
             return `
               <div class="admin-product-card" data-prod-id="${umasushiEscapeHtml(p.id)}">
                 <div class="admin-product-preview">
@@ -505,6 +529,7 @@ function configurarHandlersMenuAdmin(container) {
                     <p>${umasushiEscapeHtml(p.descripcion || '')}</p>
                     <div class="admin-prod-meta">
                       <span class="admin-prod-category">${umasushiEscapeHtml(p.categoria || 'Productos')}</span>
+                      ${esExtra ? '<span class="tag-chip" style="background:#ffd966;color:#7a5a00">Extra</span>' : ''}
                       ${veg ? '<span class="tag-chip">Veggie</span>' : ''}
                       ${gluten ? '<span class="tag-chip">Gluten free</span>' : ''}
                     </div>
@@ -550,8 +575,15 @@ function configurarHandlersMenuAdmin(container) {
         var categoria = inputCat ? inputCat.value : 'Productos';
         var veggi = inputVeggi ? inputVeggi.checked : false;
         var glutenfree = inputGlutenfree ? inputGlutenfree.checked : true;
+        var esExtra = inputEsExtra ? inputEsExtra.checked : false;
         var imagen = imagePreview ? imagePreview.src : '/static/producto.jpeg';
-        var id = inputId && inputId.value ? inputId.value : 'p-' + Math.random().toString(36).slice(2, 11);
+        // Para producto nuevo: generar UUID v4 (requerido por la columna uuid de Supabase).
+        // Si ya existe (edición), preservar su id.
+        var id = inputId && inputId.value
+            ? inputId.value
+            : (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+                ? crypto.randomUUID()
+                : 'p-' + Math.random().toString(36).slice(2, 11));
 
         if (!nombre) {
             showModalMessage('El nombre es obligatorio.', false);
@@ -570,6 +602,7 @@ function configurarHandlersMenuAdmin(container) {
             precio: precio,
             categoria: categoria,
             imagen: imagen,
+            es_extra: esExtra,
             tags: { veggi: veggi, glutenfree: glutenfree }
         };
 
@@ -725,20 +758,23 @@ function renderCocina(activeTab) {
     }
 
     if (active === 'zonas') {
-        try {
-            var zonas = typeof obtenerZonasDelivery === 'function' ? obtenerZonasDelivery() : [];
-            console.log('[cocina] renderCocina zonas count=', Array.isArray(zonas) ? zonas.length : 0);
-            if (typeof zonasTableHtmlCircle === 'function' && typeof configurarZonasCircleAdmin === 'function') {
-                tabHost.innerHTML = zonasTableHtmlCircle(zonas);
-                configurarZonasCircleAdmin(tabHost);
-            } else {
-                tabHost.innerHTML = tablaZonasHtml(zonas);
-                configurarHandlersZonaAdmin(tabHost);
-            }
-        } catch (err) {
-            console.error('[cocina] error render zonas', err);
-            tabHost.innerHTML = '<div class="muted">No se pudo cargar las zonas. Revisa la consola.</div>';
-        }
+        tabHost.innerHTML = '<p class="muted">Cargando zonas desde Supabase…</p>';
+        (typeof obtenerZonas === 'function' ? obtenerZonas() : Promise.resolve([]))
+            .then(function (zonas) {
+                var lista = Array.isArray(zonas) ? zonas : [];
+                console.log('[cocina] renderCocina zonas count=', lista.length);
+                if (typeof zonasTableHtmlCircle === 'function' && typeof configurarZonasCircleAdmin === 'function') {
+                    tabHost.innerHTML = zonasTableHtmlCircle(lista);
+                    configurarZonasCircleAdmin(tabHost);
+                } else {
+                    tabHost.innerHTML = tablaZonasHtml(lista);
+                    configurarHandlersZonaAdmin(tabHost);
+                }
+            })
+            .catch(function (err) {
+                console.error('[cocina] error render zonas', err);
+                tabHost.innerHTML = '<div class="muted">No se pudo cargar las zonas. Revisa la consola.</div>';
+            });
         return;
     }
 
@@ -903,7 +939,113 @@ function renderPedido() {
     return renderCocina('pedidos');
 }
 
-document.addEventListener('DOMContentLoaded',async () => {
+// ===== VISTA INDIVIDUAL DE PEDIDO (link enviado por WhatsApp) =====
+// El pedido YA está en Supabase (lo guardó el cliente al confirmar).
+// Cocina solo consulta y transiciona estado. NUNCA re-crea ni duplica.
+const PEDIDO_ESTADO_TRANSICIONES = {
+    nuevo: { siguiente: 'preparando', label: 'Empezar a preparar' },
+    preparando: { siguiente: 'listo', label: 'Marcar listo' },
+    listo: { siguiente: 'entregado', label: 'Marcar entregado' },
+    entregado: null,
+    cancelado: null
+};
+
+function pedidoEstadoBadgeHtml(estado) {
+    var e = String(estado || 'nuevo');
+    return '<span class="estado-badge estado-' + umasushiEscapeHtml(e) + '">' + umasushiEscapeHtml(e) + '</span>';
+}
+
+async function renderPedidoIndividual(pedidoId, host) {
+    host.innerHTML = '<div class="pedido-card"><div class="pedido-body-modern"><p>Cargando pedido…</p></div></div>';
+
+    let pedido;
+    try {
+        pedido = await obtenerPedidoPorId(pedidoId);
+    } catch (err) {
+        console.error('[cocina] error obtenerPedidoPorId:', err);
+        pedido = null;
+    }
+
+    if (!pedido) {
+        host.innerHTML = `
+            <div class="pedido-card">
+              <div class="pedido-body-modern">
+                <h3>Pedido no encontrado</h3>
+                <p>El link puede estar incompleto, dañado, o el pedido fue eliminado.</p>
+                <p class="muted small">ID buscado: ${umasushiEscapeHtml(pedidoId)}</p>
+                <a href="cocina.html" class="btn-secondary">Volver al panel</a>
+              </div>
+            </div>`;
+        return;
+    }
+
+    // Render con clave gate. El detalle del pedido se muestra siempre
+    // (no es información ultra-sensible), pero las acciones de estado
+    // requieren clave.
+    function renderInterno() {
+        const transicion = PEDIDO_ESTADO_TRANSICIONES[pedido.estado] || null;
+        const esFinal = !transicion;
+        const claveBlock = esFinal
+            ? ''
+            : `
+              <div class="clave-section">
+                <input type="password" id="clave-cocina" placeholder="Clave cocina" autocomplete="off">
+                <button type="button" id="estado-btn" class="btn-primary" disabled>
+                  ${umasushiEscapeHtml(transicion.label)}
+                </button>
+              </div>`;
+
+        host.innerHTML = `
+            <div class="pedido-card">
+              <div class="pedido-body-modern">
+                <div class="pedido-individual-head">
+                  <h3>Pedido de ${umasushiEscapeHtml(pedido.cliente || 'Cliente')}</h3>
+                  ${pedidoEstadoBadgeHtml(pedido.estado)}
+                </div>
+                ${htmlDetalleCompletoPedido(pedido)}
+                ${claveBlock}
+                <p class="muted small">ID: ${umasushiEscapeHtml(pedido.id)}</p>
+                <p><a href="cocina.html" class="btn-secondary">Ver todos los pedidos</a></p>
+              </div>
+            </div>`;
+
+        if (esFinal) return;
+
+        const CLAVE = (window.UMASUSHI_CONFIG && window.UMASUSHI_CONFIG.claveCocina) || '';
+        const claveInput = document.getElementById('clave-cocina');
+        const estadoBtn = document.getElementById('estado-btn');
+
+        claveInput.addEventListener('input', () => {
+            estadoBtn.disabled = claveInput.value !== CLAVE;
+        });
+
+        estadoBtn.addEventListener('click', async () => {
+            if (claveInput.value !== CLAVE) return;
+            estadoBtn.disabled = true;
+            estadoBtn.textContent = 'Actualizando…';
+            try {
+                const actualizado = await actualizarEstadoPedido(pedido.id, transicion.siguiente);
+                if (!actualizado) {
+                    alert('No se pudo actualizar el estado. Revisá la conexión.');
+                    estadoBtn.disabled = false;
+                    estadoBtn.textContent = transicion.label;
+                    return;
+                }
+                pedido = actualizado;
+                renderInterno();
+            } catch (err) {
+                console.error('[cocina] error actualizando estado:', err);
+                alert('Error actualizando estado.');
+                estadoBtn.disabled = false;
+                estadoBtn.textContent = transicion.label;
+            }
+        });
+    }
+
+    renderInterno();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('[cocina] DOMContentLoaded init');
     document.getElementById('cocina').classList.add('fade-in');
 
@@ -913,68 +1055,7 @@ document.addEventListener('DOMContentLoaded',async () => {
     const content = document.getElementById('cocina-content');
 
     if (pedidoId) {
-        try {
-            const pedido = await obtenerPedidoPorId(pedidoId);
-
-            content.innerHTML = `
-                <div class="pedido-card">
-                  <div class="pedido-body-modern">
-                    <h3>Nuevo pedido para cocina</h3>
-                    ${htmlDetalleCompletoPedido(pedido)}
-                    <div class="clave-section">
-                      <input type="password" id="clave-cocina" placeholder="Clave cocina">
-                      <button type="button" id="agregar-btn" class="btn-primary" disabled>Guardar pedido</button>
-                    </div>
-                  </div>
-                </div>`;
-
-            const CLAVE = 'umai123';
-            const claveInput = document.getElementById('clave-cocina');
-            const agregarBtn = document.getElementById('agregar-btn');
-
-            claveInput.addEventListener('input', () => {
-                agregarBtn.disabled = claveInput.value !== CLAVE;
-            });
-
-            agregarBtn.addEventListener('click', async () => {
-                try {
-            
-                    if (typeof crearPedido !== 'function') {
-                        alert('No existe crearPedidoAsync');
-                        return;
-                    }
-            
-                    await crearPedido(pedido);
-            
-                    // Google Sheets opcional
-                    try {
-                        if (
-                            typeof enviarPedidoASheets === 'function' &&
-                            typeof defaultSheetsConfig === 'function'
-                        ) {
-                            enviarPedidoASheets(
-                                pedido,
-                                defaultSheetsConfig()
-                            ).catch(() => {});
-                        }
-                    } catch (e) {}
-            
-                    window.location.href = 'cocina.html';
-            
-                } catch (err) {
-                    console.error(err);
-                    alert('Error guardando pedido');
-                }
-            });
-        } catch (error) {
-            console.error(error);
-            content.innerHTML = `
-              <div class="pedido-card">
-                <h3>Error</h3>
-                <p>No se pudo cargar el pedido.</p>
-                <p class="muted">El link puede estar incompleto o dañado.</p>
-              </div>`;
-        }
+        await renderPedidoIndividual(pedidoId, content);
         return;
     }
 

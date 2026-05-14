@@ -3,9 +3,16 @@
  * zonas de envío, formato de marca de tiempo y utilidades HTML.
  */
 
-var UMASUSHI_LS_ZONAS = 'umasushiDeliveryZones';
+// El carrito y la selección de extras siguen en localStorage (estado UI
+// efímero). El menú, las zonas y los pedidos NUNCA — esos van a Supabase.
+// Shape nueva del LS (extras-as-products): { <product_id>: <cantidad> }.
+// Productos elegibles como extras son los que tienen es_extra=true en Supabase.
 var UMASUSHI_LS_EXTRAS = 'umasushiPedidoExtras';
-var UMASUSHI_EXTRA_PRECIO_UNIT = 500;
+
+// Cache en memoria de zonas de delivery. Fuente: Supabase. Se rellena en el
+// init de cada página (ver `cargarZonasConSupabase()` en script.js).
+// `obtenerZonasDelivery()` lo lee síncrono.
+var umasushiZonasCache = [];
 
 function umasushiEscapeHtml(text) {
     if (text == null) return '';
@@ -41,36 +48,69 @@ function formatPedidoTimestamp(date) {
     return day + '/' + month + '/' + year + ' - ' + hour + ':' + minute + ' hs';
 }
 
+/**
+ * Devuelve las zonas en memoria (formato local: { id, nombre, envio,
+ * center:{lat,lng}, radiusM }). Si todavía no se cargaron desde
+ * Supabase, devuelve []. Es responsabilidad del init llamar a
+ * `cargarZonasConSupabase()` antes de que el usuario confirme pedido.
+ */
 function obtenerZonasDelivery() {
-    try {
-        var raw = localStorage.getItem(UMASUSHI_LS_ZONAS);
-        if (raw === null) return [];
-        var z = JSON.parse(raw);
-        return Array.isArray(z) ? z.filter(function (zona) {
-            return zona && zona.center && zona.radiusM != null;
-        }) : [];
-    } catch (e) {
-        return [];
-    }
+    if (!Array.isArray(umasushiZonasCache)) return [];
+    return umasushiZonasCache.filter(function (zona) {
+        return zona && zona.center && zona.radiusM != null;
+    });
 }
 
+/**
+ * Devuelve los extras del carrito como mapa { <product_id>: <cantidad> }.
+ * Las versiones legacy con `teriyaki`/`soja` se descartan silenciosamente.
+ */
 function obtenerExtrasStored() {
     try {
         var raw = localStorage.getItem(UMASUSHI_LS_EXTRAS);
-        if (!raw) return { teriyaki: 0, soja: 0 };
+        if (!raw) return {};
         var j = JSON.parse(raw);
-        return {
-            teriyaki: Math.max(0, parseInt(j.teriyaki, 10) || 0),
-            soja: Math.max(0, parseInt(j.soja, 10) || 0)
-        };
+        if (!j || typeof j !== 'object') return {};
+        var clean = {};
+        for (var k in j) {
+            if (k === 'teriyaki' || k === 'soja') continue; // legacy
+            var v = parseInt(j[k], 10);
+            if (v > 0) clean[k] = v;
+        }
+        return clean;
     } catch (e) {
-        return { teriyaki: 0, soja: 0 };
+        return {};
     }
 }
 
+/**
+ * Suma precio*cantidad de cada extra. Soporta dos shapes:
+ *  - mapa { <id>: cantidad } (estado en vivo): resuelve precio desde
+ *    `productosCache` (productos con `es_extra=true`).
+ *  - array de line items [{ precio, cantidad }] (snapshot guardado):
+ *    suma directo.
+ */
 function calcularExtrasMonto(extras) {
-    var t = Math.max(0, extras.teriyaki || 0) + Math.max(0, extras.soja || 0);
-    return t * UMASUSHI_EXTRA_PRECIO_UNIT;
+    if (!extras) return 0;
+    if (Array.isArray(extras)) {
+        return extras.reduce(function (acc, x) {
+            var precio = Number(x && x.precio) || 0;
+            var cant = Math.max(0, parseInt(x && x.cantidad, 10) || 0);
+            return acc + precio * cant;
+        }, 0);
+    }
+    if (typeof extras !== 'object') return 0;
+    if (typeof productosCache === 'undefined' || !Array.isArray(productosCache)) return 0;
+    var total = 0;
+    var ids = Object.keys(extras);
+    for (var i = 0; i < ids.length; i++) {
+        var id = ids[i];
+        var cant = Math.max(0, parseInt(extras[id], 10) || 0);
+        if (cant === 0) continue;
+        var p = productosCache.find(function (x) { return x.id === id; });
+        if (p) total += (Number(p.precio) || 0) * cant;
+    }
+    return total;
 }
 
 function obtenerSubtotalProductos(productos) {
@@ -91,14 +131,46 @@ function obtenerTotalPedidoNumerico(productos, extras, costoEnvioDelivery) {
     return subProd + ex + envio;
 }
 
-function extrasLineItems(extras, precioUnit) {
-    var p = typeof precioUnit === 'number' ? precioUnit : UMASUSHI_EXTRA_PRECIO_UNIT;
-    var lines = [];
-    if (extras.teriyaki > 0) {
-        lines.push({ label: 'Extra salsa teriyaki', cantidad: extras.teriyaki, sub: extras.teriyaki * p });
+/**
+ * Convierte el mapa de extras `{ <id>: cantidad }` en líneas listas para
+ * mostrar/serializar: `[{ id, label, cantidad, precio, sub }]`. Si recibe
+ * un array ya en ese formato (snapshot), lo devuelve tal cual.
+ */
+function extrasLineItems(extras) {
+    if (Array.isArray(extras)) {
+        return extras
+            .filter(function (x) { return x && (x.cantidad || 0) > 0; })
+            .map(function (x) {
+                var nombre = x.nombre || x.label || '';
+                var precio = Number(x.precio) || 0;
+                var cantidad = Math.max(0, parseInt(x.cantidad, 10) || 0);
+                return {
+                    id: x.id || null,
+                    label: 'Extra ' + nombre,
+                    cantidad: cantidad,
+                    precio: precio,
+                    sub: precio * cantidad
+                };
+            });
     }
-    if (extras.soja > 0) {
-        lines.push({ label: 'Extra salsa de soja', cantidad: extras.soja, sub: extras.soja * p });
+    if (!extras || typeof extras !== 'object') return [];
+    if (typeof productosCache === 'undefined' || !Array.isArray(productosCache)) return [];
+    var lines = [];
+    var ids = Object.keys(extras);
+    for (var i = 0; i < ids.length; i++) {
+        var id = ids[i];
+        var cant = Math.max(0, parseInt(extras[id], 10) || 0);
+        if (cant === 0) continue;
+        var p = productosCache.find(function (x) { return x.id === id; });
+        if (!p) continue;
+        var precio = Number(p.precio) || 0;
+        lines.push({
+            id: id,
+            label: 'Extra ' + (p.nombre || ''),
+            cantidad: cant,
+            precio: precio,
+            sub: precio * cant
+        });
     }
     return lines;
 }
@@ -124,9 +196,15 @@ function construirMensajeWhatsApp(params) {
     var nombre = params.cliente || '';
     var telefono = params.telefono || '';
     var pedido = params.productos || [];
-    var extras = params.extras || { teriyaki: 0, soja: 0 };
+    // `params.extras` puede ser:
+    //  - mapa { <id>: cantidad } (estado en vivo)
+    //  - array de line items [{ id, nombre, precio, cantidad, sub }] (snapshot)
+    // `extrasLineItems` y `calcularExtrasMonto` aceptan ambos.
+    var extras = params.extras || {};
     var subProd = obtenerSubtotalProductos(pedido);
-    var montoExtras = calcularExtrasMonto(extras);
+    var montoExtras = Array.isArray(extras)
+        ? extras.reduce(function (acc, x) { return acc + (Number(x.precio) || 0) * (Number(x.cantidad) || 0); }, 0)
+        : calcularExtrasMonto(extras);
     var zonaNombre = params.zonaNombre || '';
     var costoEnvio = params.costoEnvio || 0;
     var entrega = params.entrega || '';

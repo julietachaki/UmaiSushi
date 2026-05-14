@@ -1,0 +1,4 @@
+# Estado local del CLI (no commitear)
+.branches
+.temp
+.env

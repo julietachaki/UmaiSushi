@@ -1,0 +1,3 @@
+# Supabase CLI config — Umai Sushi
+# Generado manualmente. Si corrés `supabase init` se reemplaza con el default.
+project_id = "umaisushi"

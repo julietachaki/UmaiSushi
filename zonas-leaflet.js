@@ -303,7 +303,8 @@ function configurarZonasCircleAdmin(container) {
         );
     });
 
-    container.querySelector('#zona-guardar').addEventListener('click', function () {
+    container.querySelector('#zona-guardar').addEventListener('click', async function () {
+        var btn = this;
         var filas = Array.from(tbody.querySelectorAll('tr'));
         var zonas = [];
         for (var i = 0; i < filas.length; i++) {
@@ -314,7 +315,7 @@ function configurarZonasCircleAdmin(container) {
             var radiusStr = tr.querySelector('.zona-radius')?.value;
             if (!nombre) continue;
 
-            var id = tr.getAttribute('data-zone-id') || 'z-' + Math.random().toString(36).slice(2, 11);
+            var id = tr.getAttribute('data-zone-id') || '';
             var envio = parseInt(envStr, 10) >= 0 ? parseInt(envStr, 10) : 0;
             var radiusKm = parseFloat(radiusStr);
             var radiusM = !isNaN(radiusKm) && radiusKm >= 0 ? Math.round(radiusKm * 1000) : 0;
@@ -329,7 +330,7 @@ function configurarZonasCircleAdmin(container) {
             }
 
             zonas.push({
-                id: id,
+                id: id || null,
                 nombre: nombre,
                 envio: envio,
                 radiusM: radiusM,
@@ -342,37 +343,73 @@ function configurarZonasCircleAdmin(container) {
             return;
         }
 
+        if (typeof guardarZonas !== 'function') {
+            showFb('Servicio Supabase no disponible.', false);
+            return;
+        }
+
+        btn.disabled = true;
+        var labelOriginal = btn.textContent;
+        btn.textContent = 'Guardando…';
         try {
-            localStorage.setItem(UMASUSHI_LS_ZONAS, JSON.stringify(zonas));
-            console.log('[leaflet-admin] Zonas guardadas:', zonas);
-            showFb('Zonas guardadas correctamente.', true);
+            var resultado = await guardarZonas(zonas);
+            if (!resultado) {
+                showFb('No se pudo guardar (Supabase). Revisá la consola.', false);
+                return;
+            }
+            console.log('[leaflet-admin] ✓ Zonas guardadas en Supabase:', resultado);
+            showFb('Zonas guardadas (' + resultado.length + ').', true);
+            // Re-pintar tabla con los IDs UUID asignados por Postgres
+            tbody.innerHTML = resultado.map(zonasRowHtmlCircle).join('');
+            tbody.querySelectorAll('tr').forEach(function (tr, idx) {
+                var z = resultado[idx];
+                if (z && z.center) {
+                    tr.dataset.centerLat = String(z.center.lat);
+                    tr.dataset.centerLng = String(z.center.lng);
+                }
+            });
         } catch (err) {
             console.error('[leaflet-admin] Error guardando:', err);
-            showFb('No se pudo guardar las zonas.', false);
+            showFb('Error guardando zonas.', false);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = labelOriginal;
         }
     });
 
-    container.querySelector('#zona-ejemplo').addEventListener('click', function () {
+    container.querySelector('#zona-ejemplo').addEventListener('click', async function () {
         var ejemplo = [
             {
-                id: 'z-centro',
+                // Sin id → Postgres genera UUID
                 nombre: 'Centro',
                 envio: 1500,
                 center: { lat: -34.6177, lng: -68.3301 },
                 radiusM: 1800
             }
         ];
-        tbody.innerHTML = ejemplo.map(zonasRowHtmlCircle).join('');
-        tbody.querySelectorAll('tr').forEach(function (tr, idx) {
-            var z = ejemplo[idx];
-            if (z && z.center) {
-                tr.dataset.centerLat = String(z.center.lat);
-                tr.dataset.centerLng = String(z.center.lng);
+        if (typeof guardarZonas !== 'function') {
+            showFb('Servicio Supabase no disponible.', false);
+            return;
+        }
+        try {
+            var resultado = await guardarZonas(ejemplo);
+            if (!resultado) {
+                showFb('No se pudo cargar el ejemplo.', false);
+                return;
             }
-        });
-        localStorage.setItem(UMASUSHI_LS_ZONAS, JSON.stringify(ejemplo));
-        showFb('Cargamos un ejemplo: Centro con radio 1.8 km.', true);
-        console.log('[leaflet-admin] Ejemplo cargado');
+            tbody.innerHTML = resultado.map(zonasRowHtmlCircle).join('');
+            tbody.querySelectorAll('tr').forEach(function (tr, idx) {
+                var z = resultado[idx];
+                if (z && z.center) {
+                    tr.dataset.centerLat = String(z.center.lat);
+                    tr.dataset.centerLng = String(z.center.lng);
+                }
+            });
+            showFb('Cargamos un ejemplo: Centro con radio 1.8 km.', true);
+        } catch (err) {
+            console.error('[leaflet-admin] Error en ejemplo:', err);
+            showFb('Error cargando ejemplo.', false);
+        }
     });
 
     // Bootstrap datasets
