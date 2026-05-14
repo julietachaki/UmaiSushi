@@ -1072,7 +1072,7 @@ function confirmarPedido() {
             window.open(urlWa, '_blank');
 
             // ===== REDIRECCIÓN =====
-            window.location.href = 'urlWa';
+            window.location.href = 'index.html';
         })
         .catch(function(err) {
             console.error('[confirmar] Error creando pedido:', err);
