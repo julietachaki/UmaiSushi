@@ -1,4 +1,4 @@
-# Guía paso a paso — Juli 💚
+# Guía paso a paso — Juli 
 
 Esta es **tu guía**. Acá está todo lo que te toca hacer a vos manualmente para terminar de poner en marcha el sistema. Andá tildando los pasos a medida que los hagas.
 
@@ -155,21 +155,27 @@ Si todo está OK: 🎉 **estás lista**. La sincronización REAL de pedidos haci
 ## ❓ Si algo no anda
 
 ### "URL del Sheet inválida"
+
 Asegurate que el link empieza exactamente con `https://docs.google.com/spreadsheets/d/`. No es el link de "compartir" — es la URL de la barra del navegador cuando tenés el Sheet abierto.
 
 ### "URL del Apps Script inválida"
+
 La URL correcta termina en `/exec`, no `/dev`. Si terminás en `/dev`, deployaste de prueba — volvé a Apps Script → Implementar → Nueva implementación → Aplicación web.
 
 ### "Para habilitar sync necesitás Sheet URL, Apps Script URL y token secreto"
+
 Te faltó completar uno de los tres campos. Llenalos los tres antes de tildar el checkbox.
 
 ### El badge dice "error"
+
 Probablemente el token no coincide. Verificá que el token en el dashboard sea **exactamente** el mismo que en la línea `SECRET_TOKEN` del Apps Script. Sin espacios ni comillas extra.
 
 ### "No puedo iniciar sesión / la página no carga"
+
 El server tiene que estar prendido en la compu de Emi. Avisale por WhatsApp.
 
 ### Cualquier otra cosa
+
 Sacá screenshot de lo que pasa + el mensaje exacto del error → mandámelo por WhatsApp y lo arreglo.
 
 ---
