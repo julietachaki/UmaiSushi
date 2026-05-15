@@ -10,7 +10,8 @@ Schema canónico de la DB. Las tablas se crean/sincronizan corriendo migraciones
 supabase/
   config.toml                                 # Config local del CLI
   migrations/
-    20260514120000_init.sql                   # 3 tablas + RLS
+    20260514120000_init.sql                   # 3 tablas + RLS permisivo
+    20260515120000_multi_tenant_schema.sql    # tabla negocios + FK negocio_id
 ```
 
 ---
@@ -133,15 +134,64 @@ Zonas circulares para calcular costo de envío.
 
 ---
 
+## Multi-tenant (`negocios`)
+
+A partir de la migración `20260515120000_multi_tenant_schema.sql` el schema soporta múltiples negocios. Cada producto/pedido/zona se asocia a un `negocio_id` (FK a `negocios.id`). Cada `negocio` se asocia a un `auth.users` (FK `owner_id`).
+
+| Campo `negocios` | Tipo |
+|---|---|
+| id | uuid pk |
+| owner_id | uuid → `auth.users(id)` |
+| slug | text unique (`umai`, `pizzaroma`...) |
+| nombre_negocio | text |
+| telefono_negocio | text |
+| google_sheet_url | text (no se usa todavía) |
+| activo | boolean |
+| created_at, updated_at | timestamptz |
+
+### Setup primer negocio (post-migración manual)
+
+1. **Crear usuario admin en Supabase Studio**
+   - Studio → **Authentication** → **Users** → **Add user** (botón verde).
+   - Email + password. Marcar "Auto Confirm User" para saltearse la verificación.
+   - Copiar el `id` (UUID) del user recién creado.
+
+2. **Crear el negocio y backfill de datos existentes** — pegar en SQL Editor:
+
+```sql
+-- Reemplazar <UUID-DEL-USER> con el UUID del paso 1
+insert into negocios (slug, nombre_negocio, telefono_negocio, owner_id)
+values ('umai', 'Umai Sushi', '542604539727', '<UUID-DEL-USER>');
+
+-- Backfill: asignar los datos existentes al primer negocio
+update productos      set negocio_id = (select id from negocios where slug='umai') where negocio_id is null;
+update pedidos        set negocio_id = (select id from negocios where slug='umai') where negocio_id is null;
+update zonas_delivery set negocio_id = (select id from negocios where slug='umai') where negocio_id is null;
+```
+
+3. **Verificar**:
+
+```sql
+select count(*) from productos      where negocio_id is null; -- esperado: 0
+select count(*) from pedidos        where negocio_id is null; -- esperado: 0
+select count(*) from zonas_delivery where negocio_id is null; -- esperado: 0
+```
+
+---
+
 ## RLS (Row Level Security)
 
-**MVP**: todas las tablas tienen RLS habilitado con políticas **permisivas para `anon`** (read+write). La única protección del panel admin es la clave en frontend (`umai123`).
+**Estado actual (Phase 1)**: durante la transición a auth, mantenemos las políticas permisivas (anon SELECT/INSERT/UPDATE/DELETE) en `productos`, `pedidos` y `zonas_delivery`. La razón: cocina.html todavía corre con anon key. Si las cerráramos ya, la admin actual dejaría de funcionar antes de que el dashboard con login esté listo.
 
-**Esto NO es seguro para producción.** Cualquiera con la anon key puede leer/escribir pedidos y modificar el menú. Cuando esté listo para producción real:
+**Tabla `negocios`** ya tiene RLS estricto:
+- SELECT: público (clientes necesitan resolver slug → id)
+- UPDATE / DELETE: solo el owner (`owner_id = auth.uid()`)
+- INSERT: bloqueado para anon y authenticated (solo via service_role en Studio)
 
-1. Agregar Supabase Auth (email/password).
-2. Reemplazar las políticas `for ... to anon` por `for ... to authenticated using (auth.uid() is not null)`.
-3. Pedidos: permitir INSERT a anon (cliente sin login), pero UPDATE/DELETE solo a authenticated.
+**Phase 6 (cleanup)** apretará el RLS de las 3 tablas legacy:
+- SELECT: público (cliente sigue viendo el catálogo)
+- INSERT (productos/zonas): solo owner del negocio. INSERT pedidos: público pero validando `negocios.activo = true`
+- UPDATE / DELETE: solo owner del negocio
 
 ---
 
