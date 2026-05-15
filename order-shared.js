@@ -279,8 +279,10 @@ function construirMensajeWhatsApp(params) {
         lineas.push('Dirección: ' + (ubicacionTxt || '—'));
         lineas.push('Google Maps: ' + (ubicacionLink || '—'));
     }
-    lineas.push('');
-    lineas.push('Link pedido (cocina):');
-    lineas.push(params.linkPedido || '');
+    if (params.linkPedido) {
+        lineas.push('');
+        lineas.push('Ver detalle del pedido:');
+        lineas.push(params.linkPedido);
+    }
     return lineas.join('\n');
 }

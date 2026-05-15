@@ -1,3 +1,65 @@
+// ============================================================
+// Multi-tenant: el cliente público resuelve qué negocio carga
+// según el slug en la URL (path `/u/<slug>/...` o query `?slug=`).
+// Cuando no se especifica (legacy / paths viejos), default 'umai'.
+// ============================================================
+var DEFAULT_SLUG = 'umai';
+var currentNegocio = null;
+
+function getSlugFromUrl() {
+    try {
+        // Path: /u/<slug>/...
+        var parts = location.pathname.split('/').filter(Boolean);
+        if (parts[0] === 'u' && parts[1]) return parts[1];
+        // Query string: ?slug=...
+        var params = new URLSearchParams(location.search);
+        var fromQuery = params.get('slug');
+        if (fromQuery) return fromQuery;
+    } catch (e) {}
+    return DEFAULT_SLUG;
+}
+
+/**
+ * Recorre los <a> de la página y añade `?slug=<slug>` a los que apuntan
+ * a páginas internas del cliente público (index.html, pedido.html,
+ * orden.html). Necesario en dev sin rewrites de Vercel.
+ */
+function propagarSlugEnLinks(slug) {
+    var sluggables = ['index.html', 'pedido.html', 'orden.html'];
+    document.querySelectorAll('a[href]').forEach(function (a) {
+        var href = a.getAttribute('href');
+        if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto:')) return;
+        // Solo paths relativos del cliente (no /dashboard/, /login/, etc)
+        var lastSegment = href.split('?')[0].split('/').pop();
+        if (sluggables.indexOf(lastSegment) === -1) return;
+        if (href.indexOf('slug=') !== -1) return;
+        var sep = href.indexOf('?') !== -1 ? '&' : '?';
+        a.setAttribute('href', href + sep + 'slug=' + encodeURIComponent(slug));
+    });
+}
+
+async function resolverNegocioActual() {
+    if (currentNegocio) return currentNegocio;
+    const slug = getSlugFromUrl();
+    if (typeof obtenerNegocioPorSlug !== 'function') {
+        console.warn('[app] negocios.service no cargado, sigo sin negocio');
+        return null;
+    }
+    // Esperar a Supabase ready
+    let intentos = 0;
+    while ((typeof isSupabaseReady !== 'function' || !isSupabaseReady()) && intentos < 30) {
+        await new Promise(r => setTimeout(r, 100));
+        intentos++;
+    }
+    currentNegocio = await obtenerNegocioPorSlug(slug);
+    if (!currentNegocio) {
+        console.warn('[app] No se encontró negocio para slug:', slug);
+    } else {
+        console.log('[app] ✓ Negocio actual:', currentNegocio.slug, currentNegocio.id);
+    }
+    return currentNegocio;
+}
+
 // Animación de fade-in al hacer scroll
 document.addEventListener('DOMContentLoaded', async function () {
     const sections = document.querySelectorAll('section');
@@ -14,9 +76,18 @@ document.addEventListener('DOMContentLoaded', async function () {
     sections.forEach(section => observer.observe(section));
 
     // ===== CARGA DE DATOS (solo Supabase) =====
-    // Productos → productosCache (menu-store.js)
-    // Zonas    → umasushiZonasCache (order-shared.js)
+    // 1. Resolver negocio por slug
+    // 2. Productos del negocio → productosCache (menu-store.js)
+    // 3. Zonas del negocio    → umasushiZonasCache (order-shared.js)
     console.log('[app] Inicializando carga de datos...');
+    await resolverNegocioActual();
+
+    // Propagar el slug a links internos de /u/* para que la navegación
+    // mantenga el negocio activo (workaround sin rewrites de Vercel).
+    if (location.pathname.startsWith('/u/') && currentNegocio && currentNegocio.slug) {
+        propagarSlugEnLinks(currentNegocio.slug);
+    }
+
     await Promise.all([
         cargarProductosConSupabase(),
         typeof cargarZonasConSupabase === 'function' ? cargarZonasConSupabase() : Promise.resolve()
@@ -51,7 +122,8 @@ async function cargarZonasConSupabase() {
             console.warn('[app] obtenerZonas no disponible');
             return;
         }
-        const zonas = await obtenerZonas();
+        const opts = currentNegocio ? { negocioId: currentNegocio.id } : {};
+        const zonas = await obtenerZonas(opts);
         if (typeof umasushiZonasCache !== 'undefined') {
             // eslint-disable-next-line no-global-assign
             umasushiZonasCache = Array.isArray(zonas) ? zonas.slice() : [];
@@ -77,8 +149,9 @@ async function cargarProductosConSupabase() {
         
         if (isSupabaseReady()) {
             console.log('[app] Cargando productos desde Supabase...');
-            const productos = await obtenerProductos();
-            
+            const opts = currentNegocio ? { negocioId: currentNegocio.id } : {};
+            const productos = await obtenerProductos(opts);
+
             if (productos && productos.length > 0) {
                 if (typeof productosCache !== 'undefined') {
                     productosCache = productos.slice();
@@ -1141,6 +1214,8 @@ function confirmarPedido() {
 
     // ===== GUARDAR EN SUPABASE =====
     pedidoCompleto.coords = getDeliveryCoordsStored();
+    // Multi-tenant: estampar negocio_id (RLS de Phase 6 lo requiere)
+    if (currentNegocio && currentNegocio.id) pedidoCompleto.negocio_id = currentNegocio.id;
 
     crearPedido(pedidoCompleto)
         .then(function(pedidoGuardado) {
@@ -1156,10 +1231,12 @@ function confirmarPedido() {
             removeLS(LS_EXTRAS);
             removeLS(LS_MONTO_EFECTIVO);
 
-            // ===== LINK REAL DEL PEDIDO =====
+            // ===== LINK PÚBLICO READ-ONLY DEL PEDIDO (para WhatsApp) =====
+            // Apunta a /u/orden.html (vista read-only sin acciones admin).
+            // El dueño abre /dashboard/pedidos para gestionar.
             const baseUrl = window.location.origin;
-            const linkPedido = `${baseUrl}/cocina.html?id=${pedidoGuardado.id}`;
-
+            const slug = (currentNegocio && currentNegocio.slug) || DEFAULT_SLUG;
+            const linkPedido = `${baseUrl}/u/orden.html?slug=${encodeURIComponent(slug)}&id=${pedidoGuardado.id}`;
 
             // ===== MENSAJE FINAL =====
             const mensajeFinal = construirMensajeWhatsApp({
@@ -1169,12 +1246,21 @@ function confirmarPedido() {
             });
 
             // ===== ABRIR WHATSAPP =====
-            const urlWa = `https://wa.me/542604539727?text=${encodeURIComponent(mensajeFinal)}`;
+            // El número viene del negocio (cada negocio recibe pedidos en su propio WA).
+            // Fallback al hardcoded por compat — debería desaparecer cuando todos los
+            // negocios tengan telefono_negocio cargado.
+            const telefono = (currentNegocio && currentNegocio.telefono_negocio) ||
+                             (window.UMASUSHI_CONFIG && window.UMASUSHI_CONFIG.whatsappNumero) ||
+                             '542604539727';
+            const urlWa = `https://wa.me/${telefono}?text=${encodeURIComponent(mensajeFinal)}`;
 
             window.open(urlWa, '_blank');
 
-            // ===== REDIRECCIÓN =====
-            window.location.href = 'index.html';
+            // ===== REDIRECCIÓN al catálogo del negocio =====
+            const homeUrl = location.pathname.startsWith('/u/')
+                ? `/u/?slug=${encodeURIComponent(slug)}`
+                : 'index.html';
+            window.location.href = homeUrl;
         })
         .catch(function(err) {
             console.error('[confirmar] Error creando pedido:', err);

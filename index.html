@@ -2,117 +2,16 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Umai Sushi - Sushi Fresco en San Rafael</title>
-    <meta name="description" content="Disfruta de sushi fresco y hecho a pedido en Umai Sushi, San Rafael. Menú premium con rolls clásicos, calientes y tablas surtidas.">
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <title>Umai Sushi</title>
+    <meta http-equiv="refresh" content="0; url=/u/?slug=umai">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="canonical" href="/u/?slug=umai">
+    <script>
+        // Redirect inmediato sin esperar refresh
+        location.replace('/u/?slug=umai');
+    </script>
 </head>
 <body>
-    <!-- Header -->
-    <header class="main-header">
-        <div class="container">
-            <div class="logo">
-                <a href="index.html">Umai Sushi</a>
-            </div>
-            <nav class="nav-desktop">
-                <a href="#menu">Menú</a>
-                <a href="pedido.html">Mi Pedido</a>
-                <a href="#horarios">Horarios</a>
-            </nav>
-            <div class="hamburger" onclick="toggleMenu()">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
-    </header>
-
-    <!-- Sidebar Mobile -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-overlay" onclick="toggleMenu()"></div>
-        <div class="sidebar-content">
-            <a href="index.html">Inicio</a>
-            <a href="#menu" onclick="toggleMenu()">Menú</a>
-            <a href="pedido.html" onclick="toggleMenu()">Mi Pedido</a>
-            <a href="#horarios" onclick="toggleMenu()">Horarios</a>
-        </div>
-    </div>
-
-    <!-- Botón flotante WhatsApp -->
-    <a href="https://wa.me/542604539727?text=Hola!%20Quiero%20hacer%20un%20pedido%20en%20Umai%20Sushi%20🍣" class="whatsapp-float" target="_blank" aria-label="Contactar por WhatsApp">
-        <img src="https://img.icons8.com/color/48/000000/whatsapp.png" alt="WhatsApp">
-    </a>
-
-    <!-- Hero Section -->
-    <section id="hero" class="hero">
-        <div class="hero-overlay"></div>
-        <div class="hero-content">
-            <h1>Umai Sushi</h1>
-            <p class="subtitle">San Rafael</p>
-            <a href="#menu" class="btn-primary">COMENZAR PEDIDO</a>
-        </div>
-    </section>
-
-    <!-- Menú Section -->
-    <section id="menu" class="menu">
-        <div class="container">
-            <h2>Menú</h2>
-            <div id="menu-dynamic"></div>
-        </div>
-    </section>
-
-    <!-- Horarios Section -->
-    <section id="horarios" class="horarios">
-        <div class="container">
-            <h2>Horarios</h2>
-            <div class="product-card">
-                <div class="product-info">
-                    <p><strong>Viernes y sábados de 20hs a 00hs</strong></p>
-                    <p>Para realizar pedidos estamos disponibles todos los días de la semana las 24 hs.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p>Instagram: <a href="https://instagram.com/umaisushi.sr" target="_blank">@umaisushi.sr</a></p>
-            <p>Ubicacion: San Rafael</p>
-            <p>Telefono: +542604539727</p>
-        </div>
-    </footer>
-
-    <!-- Barra Sticky Inferior -->
-    <div class="sticky-bar" id="sticky-bar">
-        <div class="sticky-info">
-            <div class="sticky-qty">
-                <div class="sticky-qty-num" id="sticky-qty-num">0</div>
-                <div class="sticky-qty-label">productos</div>
-            </div>
-            <div class="sticky-divider"></div>
-            <div class="sticky-total">
-                <div class="sticky-total-amount" id="sticky-total">$0</div>
-                <div class="sticky-total-label">total</div>
-            </div>
-        </div>
-        <a href="pedido.html" class="btn-sticky">Ver mi pedido</a>
-    </div>
-
-    <!-- CONFIG (debe ir antes que todo) -->
-    <script src="config.js"></script>
-
-    <!-- SUPABASE & SERVICIOS (Migración a Supabase) -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="services/supabase.js"></script>
-    <script src="services/productos.service.js"></script>
-    <script src="services/pedidos.service.js"></script>
-    <script src="services/zonas.service.js"></script>
-    
-    <!-- SCRIPTS ORIGINALES -->
-    <script src="menu-store.js"></script>
-    <script src="script.js"></script>
+    <p>Redirigiendo a <a href="/u/?slug=umai">Umai Sushi</a>…</p>
 </body>
 </html>

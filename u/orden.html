@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedido - Umai Sushi</title>
+    <meta name="description" content="Detalle del pedido (vista pública, sin acciones administrativas).">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .orden-wrap {
+            max-width: 700px;
+            margin: 100px auto 40px;
+            padding: 0 20px;
+        }
+        .orden-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid rgba(15, 73, 15, 0.1);
+        }
+        .orden-titulo {
+            font-family: 'Julius Sans One', sans-serif;
+            font-size: 28px;
+            margin: 0 0 6px;
+            color: var(--color-text);
+        }
+        .orden-sub {
+            color: var(--color-desc);
+            margin: 0 0 20px;
+            font-size: 14px;
+        }
+        .orden-estado-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-left: 8px;
+        }
+        .orden-estado-badge.estado-nuevo       { background: #fdecea; color: #c0392b; }
+        .orden-estado-badge.estado-preparando  { background: #fdebd0; color: #b9770e; }
+        .orden-estado-badge.estado-listo       { background: #eaf2fb; color: #2874a6; }
+        .orden-estado-badge.estado-entregado   { background: #ecf0f1; color: #555; }
+        .orden-estado-badge.estado-cancelado   { background: #ecf0f1; color: #777; }
+
+        .orden-section {
+            padding: 12px 0;
+            border-top: 1px solid #f0f0f0;
+        }
+        .orden-section:first-of-type { border-top: none; }
+        .orden-section h3 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--color-desc);
+            margin: 0 0 8px;
+            padding: 0;
+            border-bottom: none;
+            font-family: inherit;
+            display: block;
+        }
+        .orden-section ul {
+            margin: 0; padding-left: 20px;
+            line-height: 1.6;
+        }
+        .orden-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        .orden-row.total {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 2px solid var(--color-primary);
+        }
+        .orden-back {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .orden-loading, .orden-error {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--color-desc);
+        }
+        .orden-error { color: #c0392b; }
+        body { padding-top: 0; }
+    </style>
+</head>
+<body>
+    <div class="orden-wrap">
+        <div id="orden-loading" class="orden-loading">Cargando pedido…</div>
+        <div id="orden-error" class="orden-error" hidden></div>
+
+        <div class="orden-card" id="orden-card" hidden>
+            <h1 class="orden-titulo">
+                Pedido <span id="orden-estado"></span>
+            </h1>
+            <p class="orden-sub">
+                <span id="orden-fecha"></span> · <span id="orden-negocio"></span>
+            </p>
+
+            <div class="orden-section">
+                <h3>Cliente</h3>
+                <p><strong id="orden-cliente"></strong></p>
+                <p id="orden-telefono"></p>
+            </div>
+
+            <div class="orden-section">
+                <h3>Productos</h3>
+                <ul id="orden-productos"></ul>
+            </div>
+
+            <div class="orden-section" id="orden-extras-section" hidden>
+                <h3>Extras</h3>
+                <ul id="orden-extras"></ul>
+            </div>
+
+            <div class="orden-section">
+                <h3>Totales</h3>
+                <div class="orden-row"><span>Subtotal</span><span id="orden-subtotal"></span></div>
+                <div class="orden-row" id="row-extras" hidden><span>Extras</span><span id="orden-extras-total"></span></div>
+                <div class="orden-row" id="row-envio" hidden><span>Envío</span><span id="orden-envio"></span></div>
+                <div class="orden-row total"><span>Total</span><span id="orden-total"></span></div>
+            </div>
+
+            <div class="orden-section">
+                <h3>Entrega y pago</h3>
+                <p><strong>Forma de pago:</strong> <span id="orden-pago"></span></p>
+                <p id="orden-monto-efectivo" hidden></p>
+                <p><strong>Entrega:</strong> <span id="orden-entrega"></span></p>
+                <p id="orden-direccion-wrap" hidden><strong>Dirección:</strong> <span id="orden-direccion"></span></p>
+                <p id="orden-maps-wrap" hidden><a id="orden-maps-link" href="#" target="_blank" rel="noopener">Ver en mapa →</a></p>
+            </div>
+
+            <div class="orden-back">
+                <a id="back-link" href="/" class="btn-secondary">Volver al inicio</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/services/supabase.js"></script>
+    <script src="/services/pedidos.service.js"></script>
+    <script src="/services/negocios.service.js"></script>
+
+    <script>
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function formatPrecio(n) { return '$' + (Number(n) || 0).toLocaleString('es-AR'); }
+        function formatFecha(iso) {
+            if (!iso) return '—';
+            try {
+                return new Date(iso).toLocaleString('es-AR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            } catch (e) { return iso; }
+        }
+        function showError(msg) {
+            document.getElementById('orden-loading').hidden = true;
+            const err = document.getElementById('orden-error');
+            err.hidden = false;
+            err.textContent = msg;
+        }
+        function getParam(name) {
+            return new URLSearchParams(location.search).get(name);
+        }
+
+        (async () => {
+            const id = getParam('id');
+            const slug = getParam('slug') || 'umai';
+            if (!id) { showError('Link inválido (falta id).'); return; }
+
+            // Esperar a Supabase
+            let intentos = 0;
+            while ((!window.isSupabaseReady || !isSupabaseReady()) && intentos < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                intentos++;
+            }
+            if (!isSupabaseReady()) { showError('No se pudo conectar al servidor.'); return; }
+
+            const [pedido, negocio] = await Promise.all([
+                obtenerPedidoPorId(id),
+                obtenerNegocioPorSlug(slug)
+            ]);
+
+            if (!pedido) { showError('Pedido no encontrado. El link puede estar caducado.'); return; }
+
+            // Si el pedido pertenece a otro negocio (raro pero posible), mostrar aviso
+            if (negocio && pedido.negocio_id && pedido.negocio_id !== negocio.id) {
+                showError('Este pedido no corresponde al negocio del link.');
+                return;
+            }
+
+            document.title = `Pedido de ${pedido.cliente} - ${negocio?.nombre_negocio || 'Umai Sushi'}`;
+            document.getElementById('orden-loading').hidden = true;
+            document.getElementById('orden-card').hidden = false;
+
+            // Estado badge
+            const estado = pedido.estado || 'nuevo';
+            const estadoEl = document.getElementById('orden-estado');
+            estadoEl.textContent = estado;
+            estadoEl.className = 'orden-estado-badge estado-' + estado;
+
+            document.getElementById('orden-fecha').textContent = formatFecha(pedido.fecha);
+            document.getElementById('orden-negocio').textContent = negocio?.nombre_negocio || '—';
+            document.getElementById('orden-cliente').textContent = pedido.cliente || '—';
+            document.getElementById('orden-telefono').textContent = pedido.telefono ? '☎ ' + pedido.telefono : '';
+
+            // Productos
+            const prods = Array.isArray(pedido.productos) ? pedido.productos : [];
+            document.getElementById('orden-productos').innerHTML = prods.length
+                ? prods.map(p => `<li>${p.cantidad}× ${escapeHtml(p.nombre || '')} — ${formatPrecio((p.precio || 0) * (p.cantidad || 0))}</li>`).join('')
+                : '<li>Sin productos</li>';
+
+            // Extras (snapshot puede ser array o legacy map)
+            let extrasLines = [];
+            const ex = pedido.extras;
+            if (Array.isArray(ex)) {
+                extrasLines = ex.filter(x => (x.cantidad || 0) > 0).map(x => ({
+                    label: (x.label || x.nombre || 'extra').replace(/^Extra\s/, ''),
+                    cantidad: x.cantidad,
+                    sub: (Number(x.precio) || 0) * (Number(x.cantidad) || 0)
+                }));
+            } else if (ex && typeof ex === 'object') {
+                if (ex.teriyaki > 0) extrasLines.push({ label: 'salsa teriyaki', cantidad: ex.teriyaki, sub: ex.teriyaki * 500 });
+                if (ex.soja > 0) extrasLines.push({ label: 'salsa de soja', cantidad: ex.soja, sub: ex.soja * 500 });
+            }
+            if (extrasLines.length) {
+                document.getElementById('orden-extras-section').hidden = false;
+                document.getElementById('orden-extras').innerHTML = extrasLines.map(l =>
+                    `<li>${l.cantidad}× ${escapeHtml(l.label)} — ${formatPrecio(l.sub)}</li>`
+                ).join('');
+            }
+
+            // Totales
+            document.getElementById('orden-subtotal').textContent = formatPrecio(pedido.subtotal);
+            if (Number(pedido.extras_total) > 0) {
+                document.getElementById('row-extras').hidden = false;
+                document.getElementById('orden-extras-total').textContent = formatPrecio(pedido.extras_total);
+            }
+            const esDom = String(pedido.entrega || '').toLowerCase().includes('domicilio');
+            if (esDom) {
+                document.getElementById('row-envio').hidden = false;
+                document.getElementById('orden-envio').textContent = formatPrecio(pedido.envio);
+            }
+            document.getElementById('orden-total').textContent = formatPrecio(pedido.total);
+
+            // Entrega y pago
+            document.getElementById('orden-pago').textContent = pedido.metodo_pago || '—';
+            if (pedido.metodo_pago === 'Efectivo' && pedido.monto_efectivo) {
+                const m = document.getElementById('orden-monto-efectivo');
+                m.hidden = false;
+                m.innerHTML = `<strong>Paga con:</strong> ${formatPrecio(pedido.monto_efectivo)}`;
+            }
+            document.getElementById('orden-entrega').textContent = pedido.entrega || '—';
+            if (esDom && pedido.direccion_texto) {
+                document.getElementById('orden-direccion-wrap').hidden = false;
+                document.getElementById('orden-direccion').textContent = pedido.direccion_texto;
+            }
+            if (esDom && pedido.maps_url && pedido.maps_url !== 'No especificada') {
+                document.getElementById('orden-maps-wrap').hidden = false;
+                document.getElementById('orden-maps-link').href = pedido.maps_url;
+            }
+
+            // Back link al catálogo del negocio
+            document.getElementById('back-link').href = `/u/?slug=${encodeURIComponent(slug)}`;
+        })();
+    </script>
+</body>
+</html>
