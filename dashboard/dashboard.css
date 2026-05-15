@@ -1,4 +1,25 @@
-/* Dashboard layout — Umai Sushi panel admin */
+/* Dashboard layout — Umai Sushi panel admin
+   Hereda identidad visual de /styles.css: fuentes Bristol / MoreSugar /
+   Julius Sans One y paleta verde (--color-primary #0f490f). */
+
+@font-face {
+    font-family: 'Bristol';
+    src: url('/fonts/Bristol.otf') format('opentype');
+}
+@font-face {
+    font-family: 'MoreSugar';
+    src: url('/fonts/MoreSugar-Regular.otf') format('opentype');
+}
+@import url('https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap');
+
+:root {
+    --color-primary: #0f490f;
+    --color-primary-dark: #0a350a;
+    --color-secondary: #a4c67e;
+    --color-text: #000;
+    --color-desc: #777;
+    --color-bg: #ffffff;
+}
 
 * { box-sizing: border-box; }
 
@@ -6,8 +27,9 @@ body.dashboard-body {
     margin: 0;
     padding: 0;
     background: #f5f5f7;
-    color: #2c2c2c;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--color-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
     min-height: 100vh;
 }
 
@@ -17,9 +39,9 @@ body.dashboard-body {
     min-height: 100vh;
 }
 
-/* Sidebar */
+/* Sidebar — usa verde primary del brand */
 .dash-sidebar {
-    background: #2c2c2c;
+    background: var(--color-primary);
     color: #fff;
     padding: 24px 0;
     display: flex;
@@ -28,16 +50,18 @@ body.dashboard-body {
 .dash-sidebar h1 {
     margin: 0 0 4px;
     padding: 0 20px;
-    font-size: 18px;
-    font-family: 'Julius Sans One', sans-serif;
-    font-weight: normal;
-    letter-spacing: 0.5px;
+    font-size: 26px;
+    font-family: 'Bristol', serif;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #fff;
 }
 .dash-sidebar .dash-sub {
     padding: 0 20px;
     margin: 0 0 28px;
-    font-size: 12px;
-    color: #aaa;
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    font-family: 'MoreSugar', cursive;
 }
 .dash-sidebar nav {
     flex: 1;
@@ -55,9 +79,9 @@ body.dashboard-body {
     color: #fff;
 }
 .dash-sidebar nav a.active {
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.12);
     color: #fff;
-    border-left-color: #c0392b;
+    border-left-color: var(--color-secondary);
 }
 .dash-sidebar-footer {
     padding: 16px 20px;
@@ -95,8 +119,10 @@ body.dashboard-body {
 }
 .dash-header h2 {
     margin: 0;
-    font-size: 22px;
-    font-weight: 600;
+    font-size: 26px;
+    font-weight: 700;
+    font-family: 'Julius Sans One', sans-serif;
+    color: var(--color-text);
 }
 .dash-header .dash-header-meta {
     color: #888;
@@ -145,11 +171,207 @@ body.dashboard-body {
 }
 .dash-error {
     background: #fdf0ee;
-    color: #c0392b;
+    color: var(--color-primary);
     padding: 16px;
     border-radius: 6px;
     margin-bottom: 16px;
 }
+
+/* Pedido list */
+.dash-toolbar {
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border: 1px solid #eee;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.dash-filters {
+    display: flex;
+    gap: 6px;
+}
+.dash-filter-btn {
+    background: #f0f0f0;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #555;
+}
+.dash-filter-btn.active {
+    background: #2c2c2c;
+    color: #fff;
+}
+.dash-search {
+    flex: 1;
+    min-width: 180px;
+}
+.dash-search input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.pedido-item {
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border: 1px solid #eee;
+    border-left: 4px solid #ccc;
+    transition: border-left-color 0.15s, background 0.2s;
+}
+.pedido-item.estado-nuevo       { border-left-color: #e74c3c; }
+.pedido-item.estado-preparando  { border-left-color: #f39c12; }
+.pedido-item.estado-listo       { border-left-color: #3498db; }
+.pedido-item.estado-entregado   { border-left-color: #95a5a6; opacity: 0.7; }
+.pedido-item.estado-cancelado   { border-left-color: #777; opacity: 0.5; }
+.pedido-item.is-new { animation: pedidoFlash 1.5s ease-out; }
+@keyframes pedidoFlash {
+    0% { background: #fff8d6; }
+    100% { background: #fff; }
+}
+
+.pedido-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+.pedido-head h4 {
+    margin: 0;
+    font-size: 15px;
+    color: #2c2c2c;
+}
+.pedido-head .pedido-meta {
+    color: #888;
+    font-size: 12px;
+    margin-top: 2px;
+}
+.pedido-estado {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+}
+.pedido-estado.estado-nuevo       { background: #fdecea; color: var(--color-primary); }
+.pedido-estado.estado-preparando  { background: #fdebd0; color: #b9770e; }
+.pedido-estado.estado-listo       { background: #eaf2fb; color: #2874a6; }
+.pedido-estado.estado-entregado   { background: #ecf0f1; color: #555; }
+.pedido-estado.estado-cancelado   { background: #ecf0f1; color: #777; }
+
+.pedido-body {
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid #f3f3f3;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #444;
+}
+.pedido-body[hidden] { display: none; }
+.pedido-body ul { margin: 4px 0; padding-left: 20px; }
+.pedido-body .pedido-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pedido-body .pedido-action-btn {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.pedido-body .pedido-action-btn.btn-secondary {
+    background: #fff;
+    color: #555;
+    border: 1px solid #ccc;
+}
+.pedido-body .pedido-action-btn:hover { opacity: 0.9; }
+.pedido-body .pedido-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.pedido-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px dashed #ddd;
+}
+
+/* Form / cards genéricos */
+.dash-form-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    border: 1px solid #eee;
+    max-width: 640px;
+}
+.dash-form-row { margin-bottom: 14px; }
+.dash-form-row label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 13px;
+    color: #555;
+    font-weight: 500;
+}
+.dash-form-row input,
+.dash-form-row textarea,
+.dash-form-row select {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.dash-form-row input:focus,
+.dash-form-row textarea:focus,
+.dash-form-row select:focus { outline: none; border-color: var(--color-primary); }
+.dash-form-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+}
+.dash-btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+}
+.dash-btn-secondary {
+    background: #fff;
+    color: #555;
+    border: 1px solid #ccc;
+    padding: 10px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.dash-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.dash-feedback {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.dash-feedback.ok { background: #ecf8e8; color: #1e7e34; }
+.dash-feedback.error { background: #fdf0ee; color: var(--color-primary); }
 
 /* Mobile */
 @media (max-width: 768px) {
@@ -170,7 +392,7 @@ body.dashboard-body {
     }
     .dash-sidebar nav a.active {
         border-left: none;
-        border-bottom-color: #c0392b;
+        border-bottom-color: var(--color-primary);
     }
     .dash-sidebar-footer { display: none; }
     .dash-main { padding: 20px 16px; }

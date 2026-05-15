@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración — Umai Sushi</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/dashboard/dashboard.css">
+</head>
+<body class="dashboard-body">
+    <div id="dash-loading" class="dash-loading">Cargando…</div>
+
+    <div class="dash-layout" id="dash-layout" style="display:none;">
+        <div id="dash-sidebar-mount"></div>
+
+        <main class="dash-main">
+            <div class="dash-header">
+                <h2>Configuración</h2>
+                <span class="dash-header-meta">Datos del negocio</span>
+            </div>
+
+            <div class="dash-form-card">
+                <div class="dash-form-row">
+                    <label>Slug (URL pública)</label>
+                    <input type="text" id="cfg-slug" disabled>
+                    <p class="muted small" style="color:#999;font-size:12px;margin-top:4px;">
+                        El slug no se puede cambiar desde acá. Si necesitás renombrarlo, pedir cambio manual.
+                    </p>
+                </div>
+                <div class="dash-form-row">
+                    <label>Nombre del negocio *</label>
+                    <input type="text" id="cfg-nombre" required>
+                </div>
+                <div class="dash-form-row">
+                    <label>Teléfono (WhatsApp del negocio)</label>
+                    <input type="tel" id="cfg-telefono" placeholder="54260...">
+                    <p class="muted small" style="color:#999;font-size:12px;margin-top:4px;">
+                        Sin espacios ni +. Ej: 542604539727. Es el número que recibe los pedidos por WhatsApp.
+                    </p>
+                </div>
+                <div class="dash-form-row">
+                    <label>Google Sheets URL (próximamente)</label>
+                    <input type="url" id="cfg-sheets" placeholder="https://docs.google.com/spreadsheets/..." disabled>
+                    <p class="muted small" style="color:#999;font-size:12px;margin-top:4px;">
+                        La integración con Sheets se habilita en próximas fases.
+                    </p>
+                </div>
+
+                <p class="dash-feedback" id="cfg-feedback" hidden></p>
+
+                <div class="dash-form-actions">
+                    <button class="dash-btn-primary" id="cfg-save">Guardar cambios</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/services/supabase.js"></script>
+    <script src="/services/auth.service.js"></script>
+    <script src="/services/negocios.service.js"></script>
+    <script src="/shared/auth-guard.js"></script>
+    <script src="/shared/dashboard-shell.js"></script>
+
+    <script>
+        const feedback = document.getElementById('cfg-feedback');
+        function showFeedback(msg, ok) {
+            feedback.hidden = false;
+            feedback.textContent = msg;
+            feedback.className = 'dash-feedback ' + (ok ? 'ok' : 'error');
+            setTimeout(() => { feedback.hidden = true; }, 4000);
+        }
+
+        (async () => {
+            const ctx = await bootstrapDashPage('configuracion');
+            if (!ctx) return;
+            const { negocio } = ctx;
+            if (!negocio) {
+                document.querySelector('.dash-form-card').innerHTML =
+                    '<div class="dash-error">No se encontró tu negocio.</div>';
+                return;
+            }
+            // Llenar form con valores actuales
+            document.getElementById('cfg-slug').value = negocio.slug || '';
+            document.getElementById('cfg-nombre').value = negocio.nombre_negocio || '';
+            document.getElementById('cfg-telefono').value = negocio.telefono_negocio || '';
+            document.getElementById('cfg-sheets').value = negocio.google_sheet_url || '';
+
+            // Guardar
+            document.getElementById('cfg-save').addEventListener('click', async () => {
+                const nombre = document.getElementById('cfg-nombre').value.trim();
+                const telefono = document.getElementById('cfg-telefono').value.trim();
+                if (!nombre) {
+                    showFeedback('El nombre es obligatorio', false);
+                    return;
+                }
+                const btn = document.getElementById('cfg-save');
+                btn.disabled = true;
+                btn.textContent = 'Guardando…';
+
+                const actualizado = await actualizarNegocio(negocio.id, {
+                    nombre_negocio: nombre,
+                    telefono_negocio: telefono || null
+                });
+                btn.disabled = false;
+                btn.textContent = 'Guardar cambios';
+                if (!actualizado) {
+                    showFeedback('Error guardando. Revisá la consola.', false);
+                    return;
+                }
+                showFeedback('✓ Cambios guardados', true);
+                // Re-render sidebar para reflejar nuevo nombre
+                mountDashSidebar({
+                    active: 'configuracion',
+                    userEmail: ctx.session.user.email,
+                    negocio: actualizado
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

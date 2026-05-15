@@ -27,7 +27,7 @@ function pedidoToRow(p) {
     const envio = Number(p.envio ?? p.costoEnvio ?? 0) || 0;
     const total = Number(p.total ?? p.totalFinal ?? subtotal + extras_total + envio) || 0;
 
-    return {
+    const row = {
         cliente: String(p.cliente || 'Cliente'),
         telefono: p.telefono ? String(p.telefono) : null,
         direccion_texto: p.direccion_texto || null,
@@ -45,6 +45,10 @@ function pedidoToRow(p) {
         estado: p.estado || 'nuevo'
         // `fecha` lo setea Postgres con default now()
     };
+    // Multi-tenant: incluir negocio_id si vino. Cuando RLS se aprieta
+    // en Phase 6, sin este campo el INSERT falla.
+    if (p.negocio_id) row.negocio_id = p.negocio_id;
+    return row;
 }
 
 /**
@@ -94,10 +98,12 @@ async function obtenerPedidos(opciones = {}) {
     const limite = Number(opciones.limite) > 0 ? Number(opciones.limite) : 50;
     const offset = Number(opciones.offset) >= 0 ? Number(opciones.offset) : 0;
     const estado = opciones.estado || null;
+    const negocioId = opciones.negocioId || null;
 
     try {
         let query = supabase.from('pedidos').select('*').order('fecha', { ascending: false });
         if (estado) query = query.eq('estado', estado);
+        if (negocioId) query = query.eq('negocio_id', negocioId);
         const { data, error } = await query.range(offset, offset + limite - 1);
         if (error) {
             console.error('[pedidos] Error SELECT:', error.message);

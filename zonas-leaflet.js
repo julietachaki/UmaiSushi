@@ -352,7 +352,10 @@ function configurarZonasCircleAdmin(container) {
         var labelOriginal = btn.textContent;
         btn.textContent = 'Guardando…';
         try {
-            var resultado = await guardarZonas(zonas);
+            // Multi-tenant: las páginas que mostrán este admin setean
+            // window.CURRENT_NEGOCIO_ID antes de invocar. Sin él, fallback legacy.
+            var negocioId = (typeof window !== 'undefined' && window.CURRENT_NEGOCIO_ID) || undefined;
+            var resultado = await guardarZonas(zonas, negocioId);
             if (!resultado) {
                 showFb('No se pudo guardar (Supabase). Revisá la consola.', false);
                 return;

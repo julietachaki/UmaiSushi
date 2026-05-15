@@ -74,37 +74,35 @@ function normalizarZonasParaSupabase(zonas) {
  * Si falla: retorna array vacío, loggea error
  * @returns {Promise<Array>} Array de zonas normalizadas o vacío si error
  */
-async function obtenerZonas() {
-    console.log('[zonas] Obteniendo zonas desde Supabase...');
-    
+/**
+ * Obtener zonas de delivery.
+ * @param {{ negocioId?: string }=} opciones
+ *   - negocioId: si está, filtra por negocio. Sin él, devuelve todo
+ *     (útil para cliente público que ya resolvió slug→negocio).
+ * @returns {Promise<Array>}
+ */
+async function obtenerZonas(opciones = {}) {
     const supabase = getSupabase();
-    
     if (!supabase || !isSupabaseReady()) {
         console.error('[zonas] Supabase no disponible');
         return [];
     }
-    
+    const negocioId = opciones && opciones.negocioId ? opciones.negocioId : null;
+
     try {
-        const { data, error } = await supabase
-            .from('zonas_delivery')
-            .select('*')
-            .order('nombre', { ascending: true });
-        
+        let query = supabase.from('zonas_delivery').select('*');
+        if (negocioId) query = query.eq('negocio_id', negocioId);
+        query = query.order('nombre', { ascending: true });
+
+        const { data, error } = await query;
         if (error) {
             console.error('[zonas] Error obteniendo zonas:', error.message);
             return [];
         }
-        
         if (Array.isArray(data)) {
-            // Normalizar para compatibilidad con estructura circular
-            const zonasNormalizadas = normalizarZonasDesdeSupabase(data);
-            console.log('[zonas] ✓ Cargadas desde Supabase:', data.length, 'zonas');
-            return zonasNormalizadas;
+            return normalizarZonasDesdeSupabase(data);
         }
-        
-        console.log('[zonas] No hay zonas en Supabase');
         return [];
-        
     } catch (e) {
         console.error('[zonas] Excepción obteniendo zonas:', e.message);
         return [];
@@ -118,31 +116,39 @@ async function obtenerZonas() {
  * @param {Array} zonas - Array de zonas (formato local)
  * @returns {Promise<Array>} Zonas guardadas o null si error
  */
-async function guardarZonas(zonas) {
+async function guardarZonas(zonas, negocioId) {
     console.log('[zonas] Guardando', zonas?.length || 0, 'zonas en Supabase...');
-    
+
     const supabase = getSupabase();
     const zonasArray = Array.isArray(zonas) ? zonas : [];
-    
+
     if (!supabase || !isSupabaseReady()) {
         console.error('[zonas] Supabase no disponible');
         return null;
     }
-    
+
     try {
         // Normalizar para Supabase
         const zonasParaSupabase = normalizarZonasParaSupabase(zonasArray);
+        // Multi-tenant: estampar negocio_id en cada zona si fue provisto.
+        // Necesario para INSERT (Phase 6 lo hará NOT NULL).
+        if (negocioId) {
+            zonasParaSupabase.forEach(z => { z.negocio_id = negocioId; });
+        }
         
         // Obtener IDs existentes para eliminar las que ya no están
-        const { data: existentes, error: errorGet } = await supabase
-            .from('zonas_delivery')
-            .select('id');
-        
+        // Solo considerar zonas existentes del mismo negocio (multi-tenant).
+        // Si no nos pasaron negocioId, fallback al comportamiento legacy
+        // (delete-by-diff sobre todas).
+        let existentesQ = supabase.from('zonas_delivery').select('id');
+        if (negocioId) existentesQ = existentesQ.eq('negocio_id', negocioId);
+        const { data: existentes, error: errorGet } = await existentesQ;
+
         if (errorGet) {
             console.error('[zonas] Error obteniendo zonas existentes:', errorGet.message);
             return null;
         }
-        
+
         const idsExistentes = (existentes || []).map(z => z.id);
         const idsNuevos = zonasParaSupabase.map(z => z.id).filter(Boolean);
         const idsAEliminar = idsExistentes.filter(id => !idsNuevos.includes(id));
@@ -192,11 +198,11 @@ async function guardarZonas(zonas) {
             }
         }
 
-        // Obtener resultado final
-        const { data: finalData, error: finalError } = await supabase
-            .from('zonas_delivery')
-            .select('*')
-            .order('nombre', { ascending: true });
+        // Obtener resultado final (scoped al negocio si nos lo pasaron)
+        let finalQ = supabase.from('zonas_delivery').select('*');
+        if (negocioId) finalQ = finalQ.eq('negocio_id', negocioId);
+        finalQ = finalQ.order('nombre', { ascending: true });
+        const { data: finalData, error: finalError } = await finalQ;
 
         if (finalError) {
             console.error('[zonas] Error obteniendo zonas finales:', finalError.message);

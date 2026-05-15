@@ -8,7 +8,10 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css">
     <style>
-        body { background: #f4f4f4; }
+        body {
+            background: var(--color-secondary);
+            padding-top: 0; /* override del padding-top de styles.css */
+        }
         .auth-wrap {
             min-height: 100vh;
             display: flex;
@@ -23,20 +26,23 @@
             background: #fff;
             border-radius: 8px;
             padding: 36px 32px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
         }
         .auth-card h1 {
             margin: 0 0 4px;
-            font-size: 26px;
+            font-size: 3rem;
             text-align: center;
-            font-family: 'Julius Sans One', sans-serif;
-            font-weight: normal;
+            font-family: 'Bristol', serif;
+            font-weight: 700;
+            color: var(--color-text);
+            letter-spacing: -1px;
         }
         .auth-card .auth-subtitle {
             text-align: center;
             margin: 0 0 28px;
-            color: #888;
-            font-size: 14px;
+            color: var(--color-desc);
+            font-size: 1.2rem;
+            font-family: 'MoreSugar', cursive;
         }
         .auth-form .form-row { margin-bottom: 16px; }
         .auth-form label {
@@ -58,12 +64,12 @@
         }
         .auth-form input:focus {
             outline: none;
-            border-color: #c0392b;
+            border-color: var(--color-primary);
         }
         .auth-submit {
             width: 100%;
             padding: 12px;
-            background: #c0392b;
+            background: var(--color-primary);
             color: white;
             border: none;
             border-radius: 4px;
@@ -72,13 +78,13 @@
             font-weight: 600;
             margin-top: 8px;
         }
-        .auth-submit:hover:not(:disabled) { background: #a33223; }
+        .auth-submit:hover:not(:disabled) { background: var(--color-primary-dark); }
         .auth-submit:disabled {
             background: #c0c0c0;
             cursor: not-allowed;
         }
         .auth-error {
-            color: #c0392b;
+            color: var(--color-primary);
             font-size: 13px;
             margin-top: 12px;
             text-align: center;
@@ -108,8 +114,8 @@
             width: 100%;
             padding: 10px;
             background: #fff;
-            color: #c0392b;
-            border: 1px solid #c0392b;
+            color: var(--color-primary);
+            border: 1px solid var(--color-primary);
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
@@ -124,7 +130,7 @@
             color: #888;
             text-decoration: none;
         }
-        .auth-footer a:hover { color: #c0392b; }
+        .auth-footer a:hover { color: var(--color-primary); }
         .auth-loading {
             text-align: center;
             color: #999;

@@ -13,35 +13,34 @@
  * Obtener productos activos desde Supabase.
  * @returns {Promise<Array>}
  */
-async function obtenerProductos() {
-    console.log('[productos] Obteniendo productos desde Supabase...');
-
+/**
+ * Obtener productos activos.
+ * @param {{ negocioId?: string, soloActivos?: boolean }=} opciones
+ *   - negocioId: si está presente, filtra por ese negocio. Sin él, devuelve todo.
+ *   - soloActivos: default true.
+ * @returns {Promise<Array>}
+ */
+async function obtenerProductos(opciones = {}) {
     const supabase = getSupabase();
-
     if (!supabase || !isSupabaseReady()) {
         console.error('[productos] Supabase no disponible');
         return [];
     }
+    const negocioId = opciones && opciones.negocioId ? opciones.negocioId : null;
+    const soloActivos = opciones && opciones.soloActivos === false ? false : true;
 
     try {
-        const { data, error } = await supabase
-            .from('productos')
-            .select('*')
-            .eq('activo', true)
-            .order('categoria', { ascending: true });
+        let query = supabase.from('productos').select('*');
+        if (soloActivos) query = query.eq('activo', true);
+        if (negocioId) query = query.eq('negocio_id', negocioId);
+        query = query.order('categoria', { ascending: true }).order('orden', { ascending: true });
 
+        const { data, error } = await query;
         if (error) {
             console.error('[productos] Error obteniendo productos:', error.message);
             return [];
         }
-
-        if (data && Array.isArray(data)) {
-            console.log('[productos] ✓ Cargados desde Supabase:', data.length, 'productos');
-            return data;
-        }
-
-        console.log('[productos] No hay productos en Supabase');
-        return [];
+        return Array.isArray(data) ? data : [];
     } catch (e) {
         console.error('[productos] Excepción obteniendo productos:', e.message);
         return [];

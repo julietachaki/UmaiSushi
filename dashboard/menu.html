@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú — Umai Sushi</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/dashboard/dashboard.css">
+    <style>
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+        }
+        .menu-card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 14px;
+            display: flex;
+            gap: 12px;
+        }
+        .menu-card img {
+            width: 70px; height: 70px;
+            object-fit: cover;
+            border-radius: 6px;
+            flex-shrink: 0;
+            background: #f5f5f5;
+        }
+        .menu-card-body { flex: 1; min-width: 0; }
+        .menu-card h4 {
+            margin: 0 0 4px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .menu-card-desc {
+            color: #888;
+            font-size: 12px;
+            margin: 0 0 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .menu-card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #555;
+            margin-top: 6px;
+        }
+        .menu-card-meta .price { color: var(--color-primary); font-weight: 600; font-size: 14px; }
+        .menu-card-tags {
+            display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;
+        }
+        .menu-card-tag {
+            background: #eef; color: #557; padding: 2px 6px; border-radius: 3px; font-size: 10px;
+            text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        .menu-card-tag.tag-extra { background: #fff4cc; color: #7a5a00; }
+        .menu-card-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 6px;
+        }
+        .menu-card-actions button {
+            font-size: 12px;
+            padding: 4px 8px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .menu-card-actions .btn-del { color: var(--color-primary); }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100;
+        }
+        .modal-overlay[hidden] { display: none; }
+        .modal-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 480px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-card h3 { margin: 0 0 16px; font-size: 18px; }
+        .checkbox-row {
+            display: flex; gap: 16px; align-items: center;
+        }
+        .checkbox-row label {
+            display: flex; align-items: center; gap: 6px; margin: 0; font-weight: normal;
+            cursor: pointer;
+        }
+        .img-picker {
+            display: flex; gap: 12px; align-items: center;
+        }
+        .img-picker img {
+            width: 70px; height: 70px;
+            border-radius: 6px; object-fit: cover; background: #f5f5f5;
+        }
+    </style>
+</head>
+<body class="dashboard-body">
+    <div id="dash-loading" class="dash-loading">Cargando…</div>
+
+    <div class="dash-layout" id="dash-layout" style="display:none;">
+        <div id="dash-sidebar-mount"></div>
+
+        <main class="dash-main">
+            <div class="dash-header">
+                <h2>Menú</h2>
+                <button class="dash-btn-primary" id="btn-nuevo">+ Agregar producto</button>
+            </div>
+
+            <p class="dash-feedback" id="feedback" hidden></p>
+
+            <div id="menu-grid" class="menu-grid"></div>
+        </main>
+    </div>
+
+    <!-- Modal de edición -->
+    <div class="modal-overlay" id="modal" hidden>
+        <div class="modal-card">
+            <h3 id="modal-title">Producto</h3>
+            <input type="hidden" id="prod-id">
+            <div class="dash-form-row">
+                <label>Nombre *</label>
+                <input type="text" id="prod-nombre" required>
+            </div>
+            <div class="dash-form-row">
+                <label>Descripción</label>
+                <textarea id="prod-desc" rows="2"></textarea>
+            </div>
+            <div class="dash-form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div>
+                    <label>Precio *</label>
+                    <input type="number" id="prod-precio" min="0" step="50" required>
+                </div>
+                <div>
+                    <label>Categoría</label>
+                    <select id="prod-categoria">
+                        <option>Productos</option>
+                        <option>Tablas</option>
+                        <option>Vinos</option>
+                    </select>
+                </div>
+            </div>
+            <div class="dash-form-row">
+                <label>Imagen</label>
+                <div class="img-picker">
+                    <img id="prod-imagen-preview" src="/static/producto.jpeg" alt="">
+                    <label class="dash-btn-secondary" style="cursor:pointer;">
+                        Cambiar
+                        <input type="file" id="prod-imagen-file" accept="image/*" hidden>
+                    </label>
+                </div>
+            </div>
+            <div class="dash-form-row checkbox-row">
+                <label><input type="checkbox" id="prod-veggi"> Veggie</label>
+                <label><input type="checkbox" id="prod-glutenfree"> Gluten free</label>
+            </div>
+            <div class="dash-form-row checkbox-row">
+                <label><input type="checkbox" id="prod-es-extra"> Es extra (no aparece en menú público)</label>
+            </div>
+            <p class="dash-feedback" id="modal-feedback" hidden></p>
+            <div class="dash-form-actions">
+                <button class="dash-btn-primary" id="modal-save">Guardar</button>
+                <button class="dash-btn-secondary" id="modal-cancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/services/supabase.js"></script>
+    <script src="/services/auth.service.js"></script>
+    <script src="/services/negocios.service.js"></script>
+    <script src="/services/productos.service.js"></script>
+    <script src="/shared/auth-guard.js"></script>
+    <script src="/shared/dashboard-shell.js"></script>
+
+    <script>
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function formatPrecio(n) { return '$' + (Number(n) || 0).toLocaleString('es-AR'); }
+        function newUuid() {
+            return (typeof crypto !== 'undefined' && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : ('p-' + Math.random().toString(36).slice(2, 11));
+        }
+        function showFeedback(el, msg, ok) {
+            el.hidden = false;
+            el.textContent = msg;
+            el.className = 'dash-feedback ' + (ok ? 'ok' : 'error');
+            setTimeout(() => { el.hidden = true; }, 4000);
+        }
+        function readFileAsDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(String(r.result || ''));
+                r.onerror = reject;
+                r.readAsDataURL(file);
+            });
+        }
+
+        let state = { negocioId: null, productos: [] };
+
+        function productoCardHtml(p) {
+            const tags = [];
+            if (p.es_extra) tags.push('<span class="menu-card-tag tag-extra">Extra</span>');
+            if (p.tags?.veggi) tags.push('<span class="menu-card-tag">Veggie</span>');
+            if (p.tags?.glutenfree) tags.push('<span class="menu-card-tag">Gluten free</span>');
+            return `
+                <div class="menu-card" data-prod-id="${escapeHtml(p.id)}">
+                    <img src="${escapeHtml(p.imagen || '/static/producto.jpeg')}" alt="">
+                    <div class="menu-card-body">
+                        <h4>${escapeHtml(p.nombre || '')}</h4>
+                        <p class="menu-card-desc">${escapeHtml(p.descripcion || '')}</p>
+                        <div class="menu-card-tags">${tags.join('')}</div>
+                        <div class="menu-card-meta">
+                            <span>${escapeHtml(p.categoria || 'Productos')}</span>
+                            <span class="price">${formatPrecio(p.precio)}</span>
+                        </div>
+                        <div class="menu-card-actions">
+                            <button data-action="edit" data-id="${escapeHtml(p.id)}">Editar</button>
+                            <button data-action="del" data-id="${escapeHtml(p.id)}" class="btn-del">Eliminar</button>
+                        </div>
+                    </div>
+                </div>`;
+        }
+        function renderGrid() {
+            const host = document.getElementById('menu-grid');
+            // Ordenar por categoria, luego orden, luego nombre
+            const sorted = state.productos.slice().sort((a, b) => {
+                if ((a.categoria || '') !== (b.categoria || '')) return (a.categoria || '').localeCompare(b.categoria || '');
+                if ((a.orden || 0) !== (b.orden || 0)) return (a.orden || 0) - (b.orden || 0);
+                return (a.nombre || '').localeCompare(b.nombre || '');
+            });
+            if (!sorted.length) {
+                host.innerHTML = '<div class="pedido-empty">Aún no hay productos. Agregá el primero con "+ Agregar producto".</div>';
+                return;
+            }
+            host.innerHTML = sorted.map(productoCardHtml).join('');
+        }
+
+        // Modal helpers
+        const modal = document.getElementById('modal');
+        const modalFb = document.getElementById('modal-feedback');
+        function openModal(producto) {
+            modalFb.hidden = true;
+            const isEdit = !!producto;
+            document.getElementById('modal-title').textContent = isEdit ? 'Editar producto' : 'Nuevo producto';
+            document.getElementById('prod-id').value = isEdit ? producto.id : '';
+            document.getElementById('prod-nombre').value = isEdit ? (producto.nombre || '') : '';
+            document.getElementById('prod-desc').value = isEdit ? (producto.descripcion || '') : '';
+            document.getElementById('prod-precio').value = isEdit ? (producto.precio || 0) : '';
+            document.getElementById('prod-categoria').value = isEdit ? (producto.categoria || 'Productos') : 'Productos';
+            document.getElementById('prod-veggi').checked = !!producto?.tags?.veggi;
+            document.getElementById('prod-glutenfree').checked = producto?.tags ? !!producto.tags.glutenfree : true;
+            document.getElementById('prod-es-extra').checked = !!producto?.es_extra;
+            document.getElementById('prod-imagen-preview').src = isEdit && producto.imagen ? producto.imagen : '/static/producto.jpeg';
+            document.getElementById('prod-imagen-file').value = '';
+            modal.hidden = false;
+        }
+        function closeModal() { modal.hidden = true; }
+
+        async function saveProducto() {
+            const id = document.getElementById('prod-id').value || newUuid();
+            const nombre = document.getElementById('prod-nombre').value.trim();
+            const desc = document.getElementById('prod-desc').value.trim();
+            const precio = Number(document.getElementById('prod-precio').value);
+            const categoria = document.getElementById('prod-categoria').value;
+            const imagen = document.getElementById('prod-imagen-preview').src || '/static/producto.jpeg';
+            const veggi = document.getElementById('prod-veggi').checked;
+            const glutenfree = document.getElementById('prod-glutenfree').checked;
+            const es_extra = document.getElementById('prod-es-extra').checked;
+
+            if (!nombre) { showFeedback(modalFb, 'El nombre es obligatorio', false); return; }
+            if (!(precio >= 0)) { showFeedback(modalFb, 'Precio inválido', false); return; }
+
+            const producto = {
+                id,
+                nombre,
+                descripcion: desc,
+                precio,
+                categoria,
+                imagen,
+                activo: true,
+                es_extra,
+                tags: { veggi, glutenfree },
+                negocio_id: state.negocioId
+            };
+
+            const saveBtn = document.getElementById('modal-save');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Guardando…';
+            const guardado = await guardarProducto(producto);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Guardar';
+
+            if (!guardado) {
+                showFeedback(modalFb, 'Error guardando producto', false);
+                return;
+            }
+            // Refresh lista
+            state.productos = await obtenerProductos({ negocioId: state.negocioId });
+            renderGrid();
+            closeModal();
+            showFeedback(document.getElementById('feedback'), '✓ Producto guardado', true);
+        }
+
+        async function delProducto(id) {
+            if (!confirm('¿Eliminar este producto? Se marca como inactivo.')) return;
+            const ok = await eliminarProductoDeSupabase(id);
+            if (!ok) {
+                showFeedback(document.getElementById('feedback'), 'Error eliminando', false);
+                return;
+            }
+            state.productos = state.productos.filter(p => p.id !== id);
+            renderGrid();
+            showFeedback(document.getElementById('feedback'), '✓ Producto eliminado', true);
+        }
+
+        // Init
+        (async () => {
+            const ctx = await bootstrapDashPage('menu');
+            if (!ctx) return;
+            const { negocio } = ctx;
+            if (!negocio) {
+                document.getElementById('menu-grid').innerHTML = '<div class="dash-error">No se encontró tu negocio.</div>';
+                return;
+            }
+            state.negocioId = negocio.id;
+            state.productos = await obtenerProductos({ negocioId: negocio.id });
+            renderGrid();
+
+            // Botón nuevo
+            document.getElementById('btn-nuevo').addEventListener('click', () => openModal(null));
+
+            // Acciones por delegación
+            document.getElementById('menu-grid').addEventListener('click', e => {
+                const btn = e.target.closest('[data-action]');
+                if (!btn) return;
+                const id = btn.dataset.id;
+                const producto = state.productos.find(p => p.id === id);
+                if (!producto) return;
+                if (btn.dataset.action === 'edit') openModal(producto);
+                else if (btn.dataset.action === 'del') delProducto(id);
+            });
+
+            // Modal
+            document.getElementById('modal-save').addEventListener('click', saveProducto);
+            document.getElementById('modal-cancel').addEventListener('click', closeModal);
+            modal.addEventListener('click', e => {
+                if (e.target === modal) closeModal();
+            });
+
+            // Imagen file
+            document.getElementById('prod-imagen-file').addEventListener('change', async e => {
+                const f = e.target.files[0];
+                if (!f) return;
+                if (f.size > 500 * 1024) {
+                    showFeedback(modalFb, 'Imagen muy grande (máx 500KB). Usá una más chica.', false);
+                    e.target.value = '';
+                    return;
+                }
+                const dataUrl = await readFileAsDataUrl(f);
+                document.getElementById('prod-imagen-preview').src = dataUrl;
+            });
+        })();
+    </script>
+</body>
+</html>

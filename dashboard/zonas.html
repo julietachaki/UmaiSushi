@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zonas — Umai Sushi</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- styles.css trae los estilos del admin de zonas leaflet (.zonas-admin-card, .zonas-table, etc) -->
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/dashboard/dashboard.css">
+    <style>
+        /* styles.css aplica padding-top: 70px al body para los nav fijos del cliente;
+           en el dashboard no hay nav top, lo removemos. */
+        body.dashboard-body { padding-top: 0; }
+        /* El admin de zonas usa #zonas-tab-content como host */
+        #zonas-host { margin-top: 12px; }
+    </style>
+</head>
+<body class="dashboard-body">
+    <div id="dash-loading" class="dash-loading">Cargando…</div>
+
+    <div class="dash-layout" id="dash-layout" style="display:none;">
+        <div id="dash-sidebar-mount"></div>
+
+        <main class="dash-main">
+            <div class="dash-header">
+                <h2>Zonas de entrega</h2>
+                <span class="dash-header-meta">Definí círculos de cobertura</span>
+            </div>
+
+            <div id="zonas-host"></div>
+        </main>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/services/supabase.js"></script>
+    <script src="/services/auth.service.js"></script>
+    <script src="/services/negocios.service.js"></script>
+    <script src="/services/zonas.service.js"></script>
+    <script src="/shared/auth-guard.js"></script>
+    <script src="/shared/dashboard-shell.js"></script>
+    <!-- Util compartida que zonas-leaflet.js usa: umasushiEscapeHtml -->
+    <script src="/order-shared.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="/maps-osm.js"></script>
+    <script src="/zonas-leaflet.js"></script>
+
+    <script>
+        (async () => {
+            const ctx = await bootstrapDashPage('zonas');
+            if (!ctx) return;
+            const { negocio } = ctx;
+            const host = document.getElementById('zonas-host');
+            if (!negocio) {
+                host.innerHTML = '<div class="dash-error">No se encontró tu negocio.</div>';
+                return;
+            }
+            // Multi-tenant: zonas-leaflet.js lee window.CURRENT_NEGOCIO_ID
+            // para pasarlo al guardarZonas(), y obtenerZonas filtra por él.
+            window.CURRENT_NEGOCIO_ID = negocio.id;
+
+            // Cargar zonas del negocio
+            const zonas = await obtenerZonas({ negocioId: negocio.id });
+
+            // Render con el admin Leaflet
+            host.innerHTML = zonasTableHtmlCircle(zonas);
+            configurarZonasCircleAdmin(host);
+        })();
+    </script>
+</body>
+</html>
