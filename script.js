@@ -180,8 +180,19 @@ async function cargarProductosConSupabase() {
 
 function toggleMenu() {
     const sidebar = getEl('sidebar');
-    sidebar.classList.toggle('active');
+    if (!sidebar) return;
+    const willOpen = !sidebar.classList.contains('active');
+    sidebar.classList.toggle('active', willOpen);
+    const hamburger = document.querySelector('.hamburger');
+    if (hamburger) hamburger.classList.toggle('is-open', willOpen);
+    document.body.classList.toggle('no-scroll', willOpen);
 }
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && sidebar.classList.contains('active')) toggleMenu();
+});
 
 // ===== PEDIDO (carrito) =====
 

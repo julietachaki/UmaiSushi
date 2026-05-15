@@ -8,7 +8,7 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=20260515c">
 </head>
 <body>
     <header class="main-header">
@@ -30,6 +30,7 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-overlay" onclick="toggleMenu()"></div>
         <div class="sidebar-content">
+            <button type="button" class="sidebar-close" onclick="toggleMenu()" aria-label="Cerrar menú">&times;</button>
             <a href="index.html">Inicio</a>
             <a href="index.html#menu" onclick="toggleMenu()">Menú</a>
             <a href="pedido.html" onclick="toggleMenu()">Mi Pedido</a>
@@ -149,12 +150,12 @@
     <script src="/services/negocios.service.js"></script>
 
     <!-- SCRIPTS ORIGINALES -->
-    <script src="/order-shared.js"></script>
-    <script src="/menu-store.js"></script>
+    <script src="/order-shared.js?v=20260515c"></script>
+    <script src="/menu-store.js?v=20260515c"></script>
     <script src="/delivery-calc.js"></script>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="/maps-osm.js"></script>
-    <script src="/script.js"></script>
+    <script src="/script.js?v=20260515c"></script>
 
     <script>
         // Personalización por negocio: logo, footer, WA float

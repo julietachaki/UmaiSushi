@@ -7,7 +7,7 @@
     <meta name="description" content="Disfruta de sushi fresco y hecho a pedido en Umai Sushi, San Rafael. Menú premium con rolls clásicos, calientes y tablas surtidas.">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=20260515c">
 </head>
 <body>
     <!-- Header -->
@@ -33,6 +33,7 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-overlay" onclick="toggleMenu()"></div>
         <div class="sidebar-content">
+            <button type="button" class="sidebar-close" onclick="toggleMenu()" aria-label="Cerrar menú">&times;</button>
             <a href="index.html">Inicio</a>
             <a href="#menu" onclick="toggleMenu()">Menú</a>
             <a href="pedido.html" onclick="toggleMenu()">Mi Pedido</a>
@@ -113,8 +114,8 @@
     <script src="/services/negocios.service.js"></script>
 
     <!-- SCRIPTS ORIGINALES -->
-    <script src="/menu-store.js"></script>
-    <script src="/script.js"></script>
+    <script src="/menu-store.js?v=20260515c"></script>
+    <script src="/script.js?v=20260515c"></script>
 
     <!-- Personalización por negocio (nombre/teléfono en hero+footer+WA float) -->
     <script>
