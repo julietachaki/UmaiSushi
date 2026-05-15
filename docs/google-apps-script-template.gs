@@ -94,3 +94,47 @@ function jsonResponse(obj, statusCode) {
     // explícito en el body para que el cliente sepa.
     return out;
 }
+
+/**
+ * Inicializar el Sheet con los headers correctos en la fila 1.
+ *
+ * Cómo correr: en el editor de Apps Script, seleccionar la función
+ * `setupSheet` en el dropdown de arriba y hacer click en ▶ Ejecutar.
+ *
+ * Esto:
+ *   - Borra la fila 1 (si tiene contenido) y pone los 17 headers.
+ *   - Aplica formato (header bold, fondo verde, columna alineada).
+ *   - Congela la fila 1 para que quede sticky al scrollear.
+ * Solo hay que correrlo UNA VEZ, antes de cargar pedidos.
+ */
+function setupSheet() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheets()[0];
+
+    // Insertar headers
+    sheet.getRange(1, 1, 1, COLUMNS.length).setValues([COLUMNS]);
+
+    // Formato del header row
+    const headerRange = sheet.getRange(1, 1, 1, COLUMNS.length);
+    headerRange
+        .setFontWeight('bold')
+        .setBackground('#0f490f')
+        .setFontColor('#ffffff')
+        .setHorizontalAlignment('left')
+        .setVerticalAlignment('middle');
+
+    // Auto-resize columns
+    sheet.autoResizeColumns(1, COLUMNS.length);
+
+    // Congelar fila 1
+    sheet.setFrozenRows(1);
+
+    // Renombrar la hoja
+    sheet.setName('Pedidos');
+
+    SpreadsheetApp.getUi().alert(
+        'Sheet configurado',
+        'Los headers fueron creados. Ya podés deployar el Web App.',
+        SpreadsheetApp.getUi().ButtonSet.OK
+    );
+}

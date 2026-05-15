@@ -10,18 +10,33 @@ Esta guía explica paso a paso cómo conectar el dashboard del negocio a una hoj
 
 ### 1. Crear el Google Sheet
 
-1. Abrí [Google Drive](https://drive.google.com) con la cuenta del negocio.
-2. **Nuevo → Google Sheets en blanco**.
-3. Renombrá el archivo, ej. `Pedidos Umai Sushi`.
-4. En la fila 1 (encabezados), copiá esta línea exacta:
+Tenés **dos opciones** para crear la estructura inicial (los 17 headers en la fila 1). Elegí la que te resulte más cómoda:
 
-```
-pedido_id	fecha	hora	cliente	telefono	productos	extras	subtotal	extras_total	envio	total	metodo_pago	monto_efectivo	entrega	direccion	maps_url	estado
-```
+#### 🅐 Opción más fácil: importar el CSV pre-armado
 
-> Cada columna separada por TAB. Hay 17 columnas en total.
+1. Bajá el archivo [`docs/sheet-template.csv`](./sheet-template.csv) de este repo.
+   - Si lo tenés clonado: está en `UmaiSushi/docs/sheet-template.csv`.
+   - O abrí el repo en GitHub → carpeta `docs/` → `sheet-template.csv` → botón **Raw** → **Save As**.
+2. Andá a [Google Drive](https://drive.google.com) con la cuenta del negocio.
+3. Arrastrá el archivo CSV a Drive (o **Nuevo → Subir archivo**).
+4. Click derecho sobre el archivo subido → **Abrir con → Google Sheets**.
+5. Una vez abierto: **Archivo → Guardar como Google Sheets** (si te lo pide).
+6. La fila 1 ya viene con los 17 headers correctos. La fila 2 es una fila de ejemplo — **borrala** antes de empezar (es solo para que veas cómo se ven los datos).
+7. Renombrá el archivo: arriba a la izquierda donde dice el nombre → poné, ej., `Pedidos Umai Sushi`.
+
+#### 🅑 Opción "todo desde Apps Script"
+
+1. **Nuevo → Google Sheets en blanco** en Drive.
+2. Renombrá el archivo, ej. `Pedidos Umai Sushi`.
+3. **Extensiones → Apps Script** (te abre el editor con `myFunction()` vacío).
+4. Borrá todo y pegá el contenido de [`docs/google-apps-script-template.gs`](./google-apps-script-template.gs).
+5. En el dropdown de arriba del editor, seleccioná `setupSheet` → click ▶ **Ejecutar**.
+6. Google te pide autorización → permití (es tu propio script).
+7. Cuando termina, te muestra un alert "Sheet configurado". Los headers ya están en la fila 1 con formato verde Umai. 🎉
 
 ### 2. Crear el Apps Script Web App
+
+> Si elegiste la **Opción 🅑** del paso anterior, el script ya está pegado — saltá al cambio del token (paso 4).
 
 1. En el mismo Sheet: **Extensiones → Apps Script**.
 2. Vas a ver un editor con `function myFunction() {}`. Borrá todo.

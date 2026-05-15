@@ -1,0 +1,2 @@
+pedido_id,fecha,hora,cliente,telefono,productos,extras,subtotal,extras_total,envio,total,metodo_pago,monto_efectivo,entrega,direccion,maps_url,estado
+EJEMPLO-borrar-esta-fila,15/05/2026,20:30,Cliente Ejemplo,5491112345678,2x Roll Clásico | 1x Hot Maki,1x Salsa de Soja,15700,500,1500,17700,Efectivo,20000,A domicilio,Av. Belgrano 123 San Rafael,https://maps.google.com/?q=-34.6177,-68.3301,nuevo
