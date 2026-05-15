@@ -211,6 +211,14 @@
             errorMsg.style.display = 'none';
         }
 
+        function getRedirectTarget() {
+            const params = new URLSearchParams(location.search);
+            const r = params.get('redirect');
+            // Validar: solo paths relativos al mismo origin
+            if (r && r.startsWith('/') && !r.startsWith('//')) return r;
+            return '/dashboard/';
+        }
+
         async function checkSession() {
             const ok = await waitForSupabase();
             if (!ok) {
@@ -220,10 +228,11 @@
             }
             const session = await getCurrentSession();
             if (session) {
-                showLogged(session.user.email);
-            } else {
-                showLoginForm();
+                // Auto-redirect a destino (dashboard u otro)
+                location.replace(getRedirectTarget());
+                return;
             }
+            showLoginForm();
         }
 
         loginForm.addEventListener('submit', async (e) => {
@@ -247,8 +256,8 @@
                 submitBtn.textContent = 'Ingresar';
                 return;
             }
-            // Re-check para mostrar estado logueado
-            showLogged(user.email);
+            // Login OK → redirect a destino (dashboard u otro)
+            location.replace(getRedirectTarget());
         });
 
         logoutBtn.addEventListener('click', async () => {

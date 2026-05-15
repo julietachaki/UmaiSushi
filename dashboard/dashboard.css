@@ -1,0 +1,177 @@
+/* Dashboard layout — Umai Sushi panel admin */
+
+* { box-sizing: border-box; }
+
+body.dashboard-body {
+    margin: 0;
+    padding: 0;
+    background: #f5f5f7;
+    color: #2c2c2c;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+}
+
+.dash-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.dash-sidebar {
+    background: #2c2c2c;
+    color: #fff;
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+}
+.dash-sidebar h1 {
+    margin: 0 0 4px;
+    padding: 0 20px;
+    font-size: 18px;
+    font-family: 'Julius Sans One', sans-serif;
+    font-weight: normal;
+    letter-spacing: 0.5px;
+}
+.dash-sidebar .dash-sub {
+    padding: 0 20px;
+    margin: 0 0 28px;
+    font-size: 12px;
+    color: #aaa;
+}
+.dash-sidebar nav {
+    flex: 1;
+}
+.dash-sidebar nav a {
+    display: block;
+    padding: 10px 20px;
+    color: #ddd;
+    text-decoration: none;
+    font-size: 14px;
+    border-left: 3px solid transparent;
+}
+.dash-sidebar nav a:hover {
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+}
+.dash-sidebar nav a.active {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border-left-color: #c0392b;
+}
+.dash-sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 12px;
+    color: #999;
+}
+.dash-sidebar-footer .dash-user-email {
+    color: #ddd;
+    margin-bottom: 8px;
+    word-break: break-all;
+}
+.dash-logout-btn {
+    width: 100%;
+    background: transparent;
+    color: #ddd;
+    border: 1px solid #555;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.dash-logout-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
+/* Main content */
+.dash-main {
+    padding: 32px 40px;
+    overflow-x: hidden;
+}
+.dash-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+}
+.dash-header h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+}
+.dash-header .dash-header-meta {
+    color: #888;
+    font-size: 13px;
+}
+
+.dash-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+.dash-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border: 1px solid #eee;
+}
+.dash-card h3 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+.dash-card .dash-card-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #2c2c2c;
+}
+.dash-card .dash-card-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f3f3;
+    font-size: 14px;
+}
+.dash-card .dash-card-row:last-child { border-bottom: none; }
+.dash-card .dash-card-row strong { color: #555; }
+
+.dash-loading {
+    text-align: center;
+    padding: 80px 20px;
+    color: #888;
+}
+.dash-error {
+    background: #fdf0ee;
+    color: #c0392b;
+    padding: 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .dash-layout { grid-template-columns: 1fr; }
+    .dash-sidebar {
+        padding: 16px 0;
+    }
+    .dash-sidebar nav {
+        display: flex;
+        overflow-x: auto;
+        padding: 0 12px;
+    }
+    .dash-sidebar nav a {
+        padding: 8px 12px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        white-space: nowrap;
+    }
+    .dash-sidebar nav a.active {
+        border-left: none;
+        border-bottom-color: #c0392b;
+    }
+    .dash-sidebar-footer { display: none; }
+    .dash-main { padding: 20px 16px; }
+}

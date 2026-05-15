@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Umai Sushi</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/dashboard/dashboard.css">
+</head>
+<body class="dashboard-body">
+    <!-- Loading state mientras auth-guard verifica sesión -->
+    <div id="dash-loading" class="dash-loading">Cargando dashboard…</div>
+
+    <!-- Layout principal (oculto hasta que auth confirma) -->
+    <div class="dash-layout" id="dash-layout" style="display:none;">
+        <aside class="dash-sidebar">
+            <h1>Umai Sushi</h1>
+            <p class="dash-sub">Panel admin</p>
+            <nav>
+                <a href="/dashboard/" class="active">Inicio</a>
+                <a href="/dashboard/pedidos.html">Pedidos</a>
+                <a href="/dashboard/menu.html">Menú</a>
+                <a href="/dashboard/zonas.html">Zonas</a>
+                <a href="/dashboard/configuracion.html">Configuración</a>
+            </nav>
+            <div class="dash-sidebar-footer">
+                <div class="dash-user-email" id="dash-user-email">—</div>
+                <button class="dash-logout-btn" id="dash-logout-btn">Cerrar sesión</button>
+            </div>
+        </aside>
+
+        <main class="dash-main">
+            <div class="dash-header">
+                <h2>Bienvenida</h2>
+                <span class="dash-header-meta" id="dash-fecha">—</span>
+            </div>
+
+            <div id="dash-error-container"></div>
+
+            <div class="dash-grid">
+                <div class="dash-card">
+                    <h3>Negocio</h3>
+                    <div class="dash-card-row">
+                        <span>Nombre</span><strong id="negocio-nombre">—</strong>
+                    </div>
+                    <div class="dash-card-row">
+                        <span>Slug</span><strong id="negocio-slug">—</strong>
+                    </div>
+                    <div class="dash-card-row">
+                        <span>Teléfono</span><strong id="negocio-telefono">—</strong>
+                    </div>
+                </div>
+
+                <div class="dash-card">
+                    <h3>Links rápidos</h3>
+                    <div class="dash-card-row">
+                        <span>Catálogo público</span>
+                        <a id="link-catalogo" href="#" target="_blank">abrir →</a>
+                    </div>
+                    <div class="dash-card-row">
+                        <span>Ver pedidos</span>
+                        <a href="/dashboard/pedidos.html">abrir →</a>
+                    </div>
+                    <div class="dash-card-row">
+                        <span>Editar menú</span>
+                        <a href="/dashboard/menu.html">abrir →</a>
+                    </div>
+                </div>
+
+                <div class="dash-card">
+                    <h3>Próximamente</h3>
+                    <div class="dash-card-row" style="color:#aaa">
+                        <span>Finanzas</span><span>—</span>
+                    </div>
+                    <div class="dash-card-row" style="color:#aaa">
+                        <span>Analytics</span><span>—</span>
+                    </div>
+                    <div class="dash-card-row" style="color:#aaa">
+                        <span>Google Sheets</span><span>—</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Config + Supabase SDK + servicios -->
+    <script src="/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/services/supabase.js"></script>
+    <script src="/services/auth.service.js"></script>
+    <script src="/services/negocios.service.js"></script>
+    <script src="/shared/auth-guard.js"></script>
+
+    <script>
+        (async () => {
+            const session = await mountAuthGuard();
+            if (!session) return; // redirect en curso
+
+            // Mostrar layout
+            document.getElementById('dash-loading').style.display = 'none';
+            document.getElementById('dash-layout').style.display = 'grid';
+
+            // Email del user en sidebar
+            document.getElementById('dash-user-email').textContent = session.user.email || '—';
+
+            // Fecha actual en header
+            const now = new Date().toLocaleDateString('es-AR', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+            document.getElementById('dash-fecha').textContent = now;
+
+            // Logout
+            document.getElementById('dash-logout-btn').addEventListener('click', async () => {
+                await signOut();
+                location.replace('/login/');
+            });
+
+            // Cargar info del negocio
+            const negocio = await obtenerMiNegocio();
+            if (!negocio) {
+                const errEl = document.getElementById('dash-error-container');
+                errEl.innerHTML = `<div class="dash-error">
+                    No se encontró un negocio asociado a tu cuenta.
+                    Contactá al administrador.
+                </div>`;
+                return;
+            }
+            document.getElementById('negocio-nombre').textContent = negocio.nombre_negocio || '—';
+            document.getElementById('negocio-slug').textContent = negocio.slug || '—';
+            document.getElementById('negocio-telefono').textContent = negocio.telefono_negocio || '—';
+            document.getElementById('link-catalogo').href = `/u/${negocio.slug}/`;
+        })();
+    </script>
+</body>
+</html>
