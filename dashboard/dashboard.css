@@ -36,6 +36,20 @@ body.dashboard-body {
     min-height: 100vh;
 }
 
+/* ===== Override: styles.css tiene `section { opacity: 0 }` para
+   animaciones fade-in del sitio público. En el dashboard NO usamos
+   IntersectionObserver, así que las sections quedaban invisibles
+   (caso típico: el admin de zonas leaflet renderiza dentro de
+   <section class="zonas-admin-card">). */
+body.dashboard-body section,
+body.dashboard-body .zonas-admin-card,
+body.dashboard-body .pedido-card-shell,
+body.dashboard-body .admin-menu-card {
+    opacity: 1 !important;
+    transform: none !important;
+    visibility: visible !important;
+}
+
 /* ===== Container — igual al sitio público ===== */
 .dash-container {
     max-width: 1200px;
