@@ -1,15 +1,17 @@
 /**
- * Configuración global de Umai Sushi.
+ * Configuración global del cliente público.
  *
- * NOTA SEGURIDAD: la `claveCocina` vive en frontend — solo oculta UI,
- * no protege Supabase. La seguridad real depende de RLS + Auth (ver
- * MIGRATIONS.md). Para MVP es aceptable.
+ * IMPORTANTE: este archivo se sirve público. NO meter secretos.
+ *
+ * El acceso admin a /dashboard/* se autentica con Supabase Auth
+ * (email + password). La clave hardcoded de cocina ya no existe.
+ *
+ * El número de WhatsApp por negocio vive en la tabla `negocios`
+ * (columna `telefono_negocio`); este fallback solo sirve si script.js
+ * no pudo resolver el negocio actual.
  */
 window.UMASUSHI_CONFIG = {
-    // Clave para acceder al panel de cocina y confirmar acciones admin
-    claveCocina: 'umai123',
-
-    // WhatsApp del negocio (sin espacios ni +)
+    // Fallback WhatsApp (sin espacios ni +) si no se resolvió negocio
     whatsappNumero: '542604539727'
 
     // Mapas: OpenStreetMap + Leaflet + Nominatim (sin API key)
