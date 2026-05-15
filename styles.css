@@ -253,7 +253,7 @@ h3 {
 
 .product-desc {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: var(--color-desc);
     font-family: 'Julius Sans One', sans-serif;
     line-height: 1.4;
@@ -270,8 +270,8 @@ h3 {
 }
 
 .product-img {
-    width: 130px;
-    height: 130px;
+    width: 145px;
+    height: 145px;
     object-fit: cover;
     border-radius: 18px;
     flex-shrink: 0;
@@ -562,8 +562,8 @@ h3 {
     }
 
     .product-img {
-        width: 112px;
-        height: 112px;
+        width: 125px;
+        height: 125px;
         border-radius: 16px;
     }
 
@@ -575,7 +575,7 @@ h3 {
     }
 
     .product-desc {
-        font-size: 0.78rem;
+        font-size: 0.72rem;
         line-height: 1.3;
     }
 
@@ -600,13 +600,13 @@ h3 {
 
     .product-desc {
         /* Más chica en mobile para que entre ordenada al lado de la imagen */
-        font-size: 0.7rem;
-        line-height: 1.25;
+        font-size: 0.65rem;
+        line-height: 1.3;
     }
 
     .product-img {
-        width: 95px;
-        height: 95px;
+        width: 108px;
+        height: 108px;
         border-radius: 14px;
     }
 
@@ -978,8 +978,8 @@ h3 {
     }
 
     .product-img {
-        width: 112px;
-        height: 112px;
+        width: 125px;
+        height: 125px;
         flex-shrink: 0;
         border-radius: 16px;
     }
@@ -990,7 +990,7 @@ h3 {
     }
 
     .product-desc {
-        font-size: 0.78rem;
+        font-size: 0.72rem;
         line-height: 1.3;
         /* Sin line-clamp: descripción completa */
     }
@@ -1065,8 +1065,8 @@ h3 {
     }
 
     .product-img {
-        width: 95px;
-        height: 95px;
+        width: 108px;
+        height: 108px;
         flex-shrink: 0;
         border-radius: 14px;
     }
@@ -1083,8 +1083,8 @@ h3 {
 
     .product-desc {
         /* Descripción más chica en mobile chico para que entre ordenada */
-        font-size: 0.7rem;
-        line-height: 1.25;
+        font-size: 0.65rem;
+        line-height: 1.3;
     }
 
     .price {
@@ -1131,24 +1131,30 @@ h3 {
 /* Mobile tweaks: header + sticky más compactos */
 @media (max-width: 480px) {
     body {
-        padding-top: 58px;
+        padding-top: 60px;
     }
 
     .main-header {
-        height: 58px;
+        height: 60px;
     }
 
     .main-header .container {
-        padding: 0 14px;
+        padding: 0 12px;
     }
 
     .logo a {
-        font-size: 1.45rem;
+        font-size: 1.55rem;
+        letter-spacing: -0.4px;
     }
 
+    .hamburger {
+        width: 40px;
+        height: 40px;
+        margin-right: -6px;
+    }
     .hamburger span {
         width: 22px;
-        margin: 4px 0;
+        margin: 3px 0;
     }
 
     .sticky-bar {
@@ -1169,6 +1175,30 @@ h3 {
         padding: 9px 14px;
         border-radius: 12px;
         font-size: 0.9rem;
+    }
+}
+
+/* Pantallas muy chicas (≤360px) — escala extra para que no se apriete */
+@media (max-width: 360px) {
+    body {
+        padding-top: 56px;
+    }
+    .main-header {
+        height: 56px;
+    }
+    .main-header .container {
+        padding: 0 10px;
+    }
+    .logo a {
+        font-size: 1.35rem;
+    }
+    .hamburger {
+        width: 38px;
+        height: 38px;
+    }
+    .hamburger span {
+        width: 20px;
+        margin: 2.5px 0;
     }
 }
 
@@ -1342,15 +1372,27 @@ h3 {
 .hamburger {
     display: none;
     flex-direction: column;
+    justify-content: center;
+    align-items: center;
     cursor: pointer;
     z-index: 2001;
+    /* Touch target adecuado para dedos */
+    width: 44px;
+    height: 44px;
+    margin-right: -8px; /* balance con el padding del container */
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+.hamburger:hover,
+.hamburger:active {
+    background-color: rgba(15, 73, 15, 0.06);
 }
 
 .hamburger span {
     width: 24px;
     height: 2.5px;
     background-color: var(--color-primary);
-    margin: 5px 0;
+    margin: 3px 0;
     transition: 0.3s;
     border-radius: 2px;
 }
@@ -1383,27 +1425,30 @@ h3 {
     top: 0;
     left: 0;
     width: 280px;
+    max-width: 85vw;
     height: 100%;
     background-color: #ffffff;
-    padding: 100px 20px 20px;
+    padding: 90px 20px 20px;
     box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 4px;
 }
 
 .sidebar-content a {
     color: var(--color-text);
     text-decoration: none;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 600;
-    transition: color 0.3s ease;
+    padding: 12px 14px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.sidebar-content a:hover {
+.sidebar-content a:hover,
+.sidebar-content a:active {
     color: var(--color-primary);
-    padding: 25px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    background-color: rgba(15, 73, 15, 0.06);
 }
 
 .product-list h3 {
