@@ -61,19 +61,44 @@
 
     <script>
         (async () => {
-            const ctx = await bootstrapDashPage('zonas');
-            if (!ctx) return;
-            const { negocio } = ctx;
             const host = document.getElementById('zonas-host');
-            if (!negocio) {
-                host.innerHTML = '<div class="dash-error">No se encontró tu negocio.</div>';
-                return;
+            function showError(msg) {
+                if (host) host.innerHTML = `<div class="dash-error">${msg}</div>`;
+                console.error('[zonas-page]', msg);
             }
-            window.CURRENT_NEGOCIO_ID = negocio.id;
+            try {
+                const ctx = await bootstrapDashPage('zonas');
+                if (!ctx) return; // redirect en curso
+                const { negocio } = ctx;
+                if (!negocio) {
+                    showError('No se encontró un negocio asociado a tu cuenta.');
+                    return;
+                }
+                window.CURRENT_NEGOCIO_ID = negocio.id;
 
-            const zonas = await obtenerZonas({ negocioId: negocio.id });
-            host.innerHTML = zonasTableHtmlCircle(zonas);
-            configurarZonasCircleAdmin(host);
+                if (typeof obtenerZonas !== 'function') {
+                    showError('Servicio de zonas no disponible (zonas.service.js no cargó).');
+                    return;
+                }
+                if (typeof zonasTableHtmlCircle !== 'function') {
+                    showError('zonas-leaflet.js no cargó. Verificá que el script esté incluido.');
+                    return;
+                }
+
+                const zonas = await obtenerZonas({ negocioId: negocio.id });
+                console.log('[zonas-page] cargadas', zonas.length, 'zonas');
+
+                host.innerHTML = zonasTableHtmlCircle(zonas);
+
+                if (typeof configurarZonasCircleAdmin === 'function') {
+                    configurarZonasCircleAdmin(host);
+                } else {
+                    console.warn('[zonas-page] configurarZonasCircleAdmin no disponible');
+                }
+            } catch (e) {
+                console.error('[zonas-page] error:', e);
+                showError('Error inesperado: ' + (e?.message || e));
+            }
         })();
     </script>
 </body>
