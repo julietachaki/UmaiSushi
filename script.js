@@ -8,13 +8,16 @@ var currentNegocio = null;
 
 function getSlugFromUrl() {
     try {
-        // Path: /u/<slug>/...
-        var parts = location.pathname.split('/').filter(Boolean);
-        if (parts[0] === 'u' && parts[1]) return parts[1];
-        // Query string: ?slug=...
+        // Prioridad 1: query string ?slug=... (camino actual sin rewrites de Vercel).
+        // Esto evita que /u/pedido.html?slug=umai resuelva el slug como
+        // 'pedido.html' por error.
         var params = new URLSearchParams(location.search);
         var fromQuery = params.get('slug');
         if (fromQuery) return fromQuery;
+        // Prioridad 2: path /u/<slug>/... (cuando Vercel reescribe).
+        // Solo aceptamos como slug si NO tiene extensión (no es un .html).
+        var parts = location.pathname.split('/').filter(Boolean);
+        if (parts[0] === 'u' && parts[1] && parts[1].indexOf('.') === -1) return parts[1];
     } catch (e) {}
     return DEFAULT_SLUG;
 }
