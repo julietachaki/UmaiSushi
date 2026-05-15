@@ -50,6 +50,258 @@ body.dashboard-body .admin-menu-card {
     visibility: visible !important;
 }
 
+/* ============================================================
+   Zonas admin (Leaflet) — visual refinements en el dashboard.
+   Mantenemos el HTML que produce zonas-leaflet.js, solo
+   sobrescribimos look de card / tabla / inputs / botones.
+   ============================================================ */
+body.dashboard-body .zonas-admin-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid rgba(15, 73, 15, 0.08);
+    box-shadow: 0 4px 16px rgba(15, 73, 15, 0.04);
+    margin-bottom: 16px;
+}
+body.dashboard-body .zonas-admin-head {
+    margin-bottom: 14px;
+}
+body.dashboard-body .zonas-admin-head h3 {
+    /* Redundante con la page-header h2 "Zonas de entrega" — ocultar
+       sin tocar el HTML legacy de zonas-leaflet.js. */
+    display: none;
+}
+body.dashboard-body .zonas-admin-head p.muted {
+    color: var(--color-desc);
+    font-size: 13px;
+    margin: 0;
+}
+body.dashboard-body .zonas-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+}
+body.dashboard-body .zonas-table thead th {
+    background: #f6f7f3;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 12px 14px;
+    border-bottom: 2px solid var(--color-secondary);
+    text-align: left;
+}
+body.dashboard-body .zonas-table tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    background: #ffffff;
+    vertical-align: top;
+}
+body.dashboard-body .zonas-table tbody tr:last-child td {
+    border-bottom: none;
+}
+body.dashboard-body .zonas-table tbody tr:hover td {
+    background: #fafbf6;
+}
+body.dashboard-body .zonas-table tr.muted td {
+    color: var(--color-desc);
+    text-align: center;
+    padding: 24px 14px;
+    font-style: italic;
+}
+
+/* Inputs dentro del admin de zonas */
+body.dashboard-body .zonas-table .inp-modern,
+body.dashboard-body .zonas-table input[type="text"],
+body.dashboard-body .zonas-table input[type="number"] {
+    width: 100%;
+    padding: 8px 11px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+body.dashboard-body .zonas-table input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+body.dashboard-body .zonas-table .zona-center {
+    background: #fafbf6;
+    color: var(--color-desc);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+/* Layout dentro de la celda de "Cobertura" */
+body.dashboard-body .zona-map-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+body.dashboard-body .zona-map-row .zona-center { flex: 1; }
+body.dashboard-body .zona-radius-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+body.dashboard-body .zona-radius-row label {
+    font-size: 12px;
+    color: var(--color-desc);
+    white-space: nowrap;
+}
+body.dashboard-body .zona-radius-row .zona-radius {
+    max-width: 90px;
+}
+
+/* Botones dentro de la tabla (Mapa) y de acción global */
+body.dashboard-body .zonas-table .btn-secondary,
+body.dashboard-body .zonas-admin-actions .btn-secondary,
+body.dashboard-body .zonas-admin-actions .btn-primary {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid;
+    text-decoration: none;
+    display: inline-block;
+    line-height: 1;
+}
+body.dashboard-body .zonas-admin-actions .btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+}
+body.dashboard-body .zonas-admin-actions .btn-primary:hover {
+    background: transparent;
+    color: var(--color-primary);
+}
+body.dashboard-body .zonas-table .btn-secondary,
+body.dashboard-body .zonas-admin-actions .btn-secondary {
+    background: #fff;
+    color: var(--color-text);
+    border-color: #d0d0d0;
+}
+body.dashboard-body .zonas-table .btn-secondary:hover,
+body.dashboard-body .zonas-admin-actions .btn-secondary:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+body.dashboard-body .zonas-admin-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+}
+
+/* Botón eliminar (✕) — ghost rojo discreto */
+body.dashboard-body .zonas-table .btn-ghost {
+    background: transparent;
+    color: var(--color-desc);
+    border: 1px solid #e0e0e0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+body.dashboard-body .zonas-table .btn-ghost:hover {
+    background: #fdf0ee;
+    color: #c0392b;
+    border-color: #c0392b;
+}
+
+/* Feedback (mensajes ok/error) */
+body.dashboard-body .zonas-feedback {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #f6f7f3;
+}
+
+/* Modal del mapa — refinar la card y el footer hint */
+body.dashboard-body .umai-modal-card {
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(15, 73, 15, 0.1);
+}
+body.dashboard-body .umai-modal-head {
+    background: #fafbf6;
+    padding: 14px 18px;
+}
+body.dashboard-body .umai-modal-head strong {
+    font-family: 'Julius Sans One', sans-serif;
+    color: var(--color-text);
+    font-size: 1rem;
+    font-weight: 700;
+}
+body.dashboard-body .umai-modal-foot {
+    background: #fafbf6;
+    padding: 12px 18px;
+}
+body.dashboard-body .umai-modal-foot .muted.small {
+    color: var(--color-desc);
+    font-size: 12px;
+}
+body.dashboard-body .umai-modal-body {
+    padding: 16px 18px;
+}
+body.dashboard-body .umai-modal .form-row label {
+    display: block;
+    font-size: 12px;
+    color: var(--color-desc);
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+body.dashboard-body .umai-modal .form-row input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+body.dashboard-body .umai-modal .form-row input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+body.dashboard-body .direccion-sugerencias-dropdown {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    body.dashboard-body .zonas-admin-card { padding: 16px; }
+    body.dashboard-body .zonas-table { font-size: 13px; }
+    body.dashboard-body .zonas-table thead th,
+    body.dashboard-body .zonas-table tbody td { padding: 10px 8px; }
+    body.dashboard-body .zona-map-row { flex-direction: column; align-items: stretch; }
+    body.dashboard-body .zona-radius-row .zona-radius { max-width: 100%; }
+}
+
 /* ===== Container — igual al sitio público ===== */
 .dash-container {
     max-width: 1200px;
