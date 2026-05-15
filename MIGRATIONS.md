@@ -8,10 +8,14 @@ Schema canónico de la DB. Las tablas se crean/sincronizan corriendo migraciones
 
 ```
 supabase/
-  config.toml                                 # Config local del CLI
+  config.toml                                          # Config local del CLI
   migrations/
-    20260514120000_init.sql                   # 3 tablas + RLS permisivo
-    20260515120000_multi_tenant_schema.sql    # tabla negocios + FK negocio_id
+    20260514120000_init.sql                            # 3 tablas + RLS permisivo
+    20260515120000_multi_tenant_schema.sql             # tabla negocios + FK negocio_id
+    20260515150000_rls_lockdown.sql                    # RLS estricto multi-tenant
+    20260515160000_drop_legacy_public_policies.sql     # cleanup policies legacy
+    20260515170000_enable_realtime_pedidos.sql         # habilitar realtime
+    20260515180000_sheets_integration_schema.sql       # google_sheet_*, vista negocios_public
 ```
 
 ---
@@ -145,9 +149,21 @@ A partir de la migración `20260515120000_multi_tenant_schema.sql` el schema sop
 | slug | text unique (`umai`, `pizzaroma`...) |
 | nombre_negocio | text |
 | telefono_negocio | text |
-| google_sheet_url | text (no se usa todavía) |
 | activo | boolean |
 | created_at, updated_at | timestamptz |
+| **Integración Google Sheets** | |
+| google_sheet_url | text — URL completa del Sheet (input del dueño) |
+| google_sheet_id | text — spreadsheet_id extraído de la URL |
+| google_apps_script_url | text — URL del Web App deployado |
+| google_apps_script_secret | text — shared token para validar POSTs |
+| google_sync_enabled | boolean — toggle on/off |
+| google_sync_status | text — `disconnected` \| `pending` \| `connected` \| `error` |
+| google_last_sync_at | timestamptz — última sync OK |
+| google_last_sync_error | text — último mensaje de error |
+
+### Vista `negocios_public`
+
+Expone solo columnas no sensibles (id, slug, nombre, teléfono, activo, created_at). El cliente público anon usa esta vista (`obtenerNegocioPorSlug`). Las columnas `google_*` solo accesibles vía SELECT autenticado del owner sobre la tabla `negocios`.
 
 ### Setup primer negocio (post-migración manual)
 

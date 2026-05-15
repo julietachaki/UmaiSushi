@@ -6,6 +6,56 @@
     <title>Configuración — Umai Sushi</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/dashboard/dashboard.css">
+    <style>
+        .sync-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-left: 8px;
+        }
+        .sync-badge.disconnected { background: #ecf0f1; color: #555; }
+        .sync-badge.pending      { background: #fdebd0; color: #b9770e; }
+        .sync-badge.connected    { background: #e9f1d6; color: var(--color-primary); }
+        .sync-badge.error        { background: #fdf0ee; color: #c0392b; }
+
+        .sheets-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--color-border);
+        }
+        .sheets-section h3 {
+            font-family: 'Julius Sans One', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--color-text);
+            margin: 0 0 4px;
+            padding: 0;
+            border-bottom: none;
+            display: flex;
+            align-items: center;
+        }
+        .sheets-section .sheets-desc {
+            font-size: 13px;
+            color: var(--color-desc);
+            margin: 0 0 18px;
+        }
+        .sheets-section .sheets-desc a {
+            color: var(--color-primary);
+            text-decoration: underline;
+        }
+        .input-error {
+            border-color: #c0392b !important;
+        }
+        .input-help {
+            font-size: 12px;
+            color: var(--color-desc);
+            margin-top: 4px;
+        }
+    </style>
 </head>
 <body class="dashboard-body">
     <div id="dash-loading" class="dash-loading">Cargando…</div>
@@ -25,7 +75,7 @@
                     <div class="dash-form-row">
                         <label>Slug (URL pública)</label>
                         <input type="text" id="cfg-slug" disabled>
-                        <p style="color:var(--color-desc);font-size:12px;margin-top:4px;">
+                        <p class="input-help">
                             El slug no se puede cambiar desde acá. Si necesitás renombrarlo, pedir cambio manual.
                         </p>
                     </div>
@@ -36,16 +86,59 @@
                     <div class="dash-form-row">
                         <label>Teléfono (WhatsApp del negocio)</label>
                         <input type="tel" id="cfg-telefono" placeholder="54260...">
-                        <p style="color:var(--color-desc);font-size:12px;margin-top:4px;">
+                        <p class="input-help">
                             Sin espacios ni +. Ej: 542604539727. Es el número que recibe los pedidos por WhatsApp.
                         </p>
                     </div>
-                    <div class="dash-form-row">
-                        <label>Google Sheets URL (próximamente)</label>
-                        <input type="url" id="cfg-sheets" placeholder="https://docs.google.com/spreadsheets/..." disabled>
-                        <p style="color:var(--color-desc);font-size:12px;margin-top:4px;">
-                            La integración con Sheets se habilita en próximas fases.
+
+                    <!-- ====== INTEGRACIÓN GOOGLE SHEETS ====== -->
+                    <div class="sheets-section">
+                        <h3>
+                            Integración Google Sheets
+                            <span class="sync-badge disconnected" id="sync-badge">desconectada</span>
+                        </h3>
+                        <p class="sheets-desc">
+                            Sincronizá tus pedidos automáticamente con una hoja de cálculo de Google.
+                            <br>
+                            <a href="/docs/SHEETS_SETUP.md" target="_blank">Ver paso a paso →</a>
                         </p>
+
+                        <div class="dash-form-row">
+                            <label>URL del Google Sheet</label>
+                            <input type="url" id="cfg-sheet-url"
+                                   placeholder="https://docs.google.com/spreadsheets/d/...">
+                            <p class="input-help">
+                                Pegá la URL completa del Sheet. El sistema extrae el ID automáticamente.
+                            </p>
+                        </div>
+
+                        <div class="dash-form-row">
+                            <label>URL del Apps Script Web App</label>
+                            <input type="url" id="cfg-script-url"
+                                   placeholder="https://script.google.com/macros/s/.../exec">
+                            <p class="input-help">
+                                URL del Apps Script deployado como Web App. Es distinta del URL del Sheet.
+                            </p>
+                        </div>
+
+                        <div class="dash-form-row">
+                            <label>Token secreto (compartido con Apps Script)</label>
+                            <input type="text" id="cfg-script-secret"
+                                   placeholder="Generá una clave aleatoria">
+                            <p class="input-help">
+                                El Apps Script valida este token en cada POST. Generá uno random y pegalo
+                                también en el código del Apps Script.
+                            </p>
+                        </div>
+
+                        <div class="dash-form-row">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" id="cfg-sync-enabled">
+                                Habilitar sincronización con Sheets
+                            </label>
+                        </div>
+
+                        <p class="input-help" id="last-sync-info" style="margin-top:8px;"></p>
                     </div>
 
                     <p class="dash-feedback" id="cfg-feedback" hidden></p>
@@ -63,6 +156,7 @@
     <script src="/services/supabase.js"></script>
     <script src="/services/auth.service.js"></script>
     <script src="/services/negocios.service.js"></script>
+    <script src="/services/sheets.service.js"></script>
     <script src="/shared/auth-guard.js"></script>
     <script src="/shared/dashboard-shell.js"></script>
 
@@ -72,7 +166,33 @@
             feedback.hidden = false;
             feedback.textContent = msg;
             feedback.className = 'dash-feedback ' + (ok ? 'ok' : 'error');
-            setTimeout(() => { feedback.hidden = true; }, 4000);
+            setTimeout(() => { feedback.hidden = true; }, 5000);
+        }
+
+        function setBadge(status) {
+            const badge = document.getElementById('sync-badge');
+            const labels = {
+                disconnected: 'desconectada',
+                pending: 'configurando…',
+                connected: 'conectada',
+                error: 'error'
+            };
+            badge.textContent = labels[status] || labels.disconnected;
+            badge.className = 'sync-badge ' + (status || 'disconnected');
+        }
+
+        function setLastSyncInfo(negocio) {
+            const el = document.getElementById('last-sync-info');
+            if (negocio.google_last_sync_at) {
+                const d = new Date(negocio.google_last_sync_at);
+                el.textContent = `Última sincronización: ${d.toLocaleString('es-AR')}`;
+                el.style.color = 'var(--color-desc)';
+            } else if (negocio.google_last_sync_error) {
+                el.textContent = `Último error: ${negocio.google_last_sync_error}`;
+                el.style.color = '#c0392b';
+            } else {
+                el.textContent = '';
+            }
         }
 
         (async () => {
@@ -87,30 +207,93 @@
             document.getElementById('cfg-slug').value = negocio.slug || '';
             document.getElementById('cfg-nombre').value = negocio.nombre_negocio || '';
             document.getElementById('cfg-telefono').value = negocio.telefono_negocio || '';
-            document.getElementById('cfg-sheets').value = negocio.google_sheet_url || '';
+            document.getElementById('cfg-sheet-url').value = negocio.google_sheet_url || '';
+            document.getElementById('cfg-script-url').value = negocio.google_apps_script_url || '';
+            document.getElementById('cfg-script-secret').value = negocio.google_apps_script_secret || '';
+            document.getElementById('cfg-sync-enabled').checked = !!negocio.google_sync_enabled;
+
+            setBadge(negocio.google_sync_status || 'disconnected');
+            setLastSyncInfo(negocio);
 
             document.getElementById('cfg-save').addEventListener('click', async () => {
                 const nombre = document.getElementById('cfg-nombre').value.trim();
                 const telefono = document.getElementById('cfg-telefono').value.trim();
+                const sheetUrlInput = document.getElementById('cfg-sheet-url');
+                const scriptUrlInput = document.getElementById('cfg-script-url');
+                const sheetUrlRaw = sheetUrlInput.value.trim();
+                const scriptUrlRaw = scriptUrlInput.value.trim();
+                const scriptSecret = document.getElementById('cfg-script-secret').value.trim();
+                const syncEnabled = document.getElementById('cfg-sync-enabled').checked;
+
+                sheetUrlInput.classList.remove('input-error');
+                scriptUrlInput.classList.remove('input-error');
+
                 if (!nombre) {
                     showFeedback('El nombre es obligatorio', false);
                     return;
                 }
+
+                // Validar Sheet URL (si viene)
+                let parsedSheet = null;
+                if (sheetUrlRaw) {
+                    parsedSheet = parseGoogleSheetUrl(sheetUrlRaw);
+                    if (!parsedSheet) {
+                        sheetUrlInput.classList.add('input-error');
+                        showFeedback('URL del Sheet inválida. Debe ser https://docs.google.com/spreadsheets/d/...', false);
+                        return;
+                    }
+                }
+
+                // Validar Apps Script URL (si viene)
+                let parsedScript = null;
+                if (scriptUrlRaw) {
+                    parsedScript = parseAppsScriptUrl(scriptUrlRaw);
+                    if (!parsedScript) {
+                        scriptUrlInput.classList.add('input-error');
+                        showFeedback('URL del Apps Script inválida. Debe ser https://script.google.com/macros/s/.../exec', false);
+                        return;
+                    }
+                }
+
+                // Si sync_enabled = true pero faltan datos clave → error
+                if (syncEnabled && (!parsedSheet || !parsedScript || !scriptSecret)) {
+                    showFeedback('Para habilitar sync necesitás Sheet URL, Apps Script URL y token secreto.', false);
+                    return;
+                }
+
+                // Calcular sync_status
+                let syncStatus = 'disconnected';
+                if (parsedSheet && parsedScript && scriptSecret) {
+                    syncStatus = syncEnabled ? 'connected' : 'pending';
+                }
+
                 const btn = document.getElementById('cfg-save');
                 btn.disabled = true;
                 btn.textContent = 'Guardando…';
 
-                const actualizado = await actualizarNegocio(negocio.id, {
+                const updates = {
                     nombre_negocio: nombre,
-                    telefono_negocio: telefono || null
-                });
+                    telefono_negocio: telefono || null,
+                    google_sheet_url: parsedSheet ? parsedSheet.url : null,
+                    google_sheet_id: parsedSheet ? parsedSheet.id : null,
+                    google_apps_script_url: parsedScript ? parsedScript.url : null,
+                    google_apps_script_secret: scriptSecret || null,
+                    google_sync_enabled: syncEnabled,
+                    google_sync_status: syncStatus
+                };
+
+                const actualizado = await actualizarNegocio(negocio.id, updates);
                 btn.disabled = false;
                 btn.textContent = 'Guardar cambios';
+
                 if (!actualizado) {
                     showFeedback('Error guardando. Revisá la consola.', false);
                     return;
                 }
                 showFeedback('✓ Cambios guardados', true);
+                setBadge(actualizado.google_sync_status || 'disconnected');
+                setLastSyncInfo(actualizado);
+
                 // Re-mount header con nuevo nombre del negocio en logo
                 mountDashShell({
                     active: 'configuracion',

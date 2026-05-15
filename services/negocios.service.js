@@ -14,6 +14,9 @@
 
 /**
  * Resolver un slug a un negocio (público, sin auth).
+ * Usa la VIEW `negocios_public` que solo expone columnas no sensibles
+ * (id, slug, nombre, teléfono, activo, created_at). Las columnas
+ * google_apps_script_* y similares NO son visibles vía esta función.
  * @param {string} slug
  * @returns {Promise<object|null>}
  */
@@ -23,10 +26,9 @@ async function obtenerNegocioPorSlug(slug) {
     if (!supabase || !isSupabaseReady()) return null;
 
     const { data, error } = await supabase
-        .from('negocios')
+        .from('negocios_public')
         .select('*')
         .eq('slug', slug)
-        .eq('activo', true)
         .maybeSingle();
     if (error) {
         console.error('[negocios] obtenerNegocioPorSlug:', error.message);
@@ -94,7 +96,12 @@ async function obtenerMisNegocios() {
 /**
  * Actualiza datos del negocio (RLS verifica que sea owner).
  * @param {string} id
- * @param {object} updates - { nombre_negocio?, telefono_negocio?, google_sheet_url? }
+ * @param {object} updates - whitelist incluye:
+ *   - nombre_negocio, telefono_negocio
+ *   - google_sheet_url, google_sheet_id (extraído por parser)
+ *   - google_apps_script_url, google_apps_script_secret
+ *   - google_sync_enabled, google_sync_status
+ *   - google_last_sync_at, google_last_sync_error
  * @returns {Promise<object|null>}
  */
 async function actualizarNegocio(id, updates) {
@@ -103,7 +110,18 @@ async function actualizarNegocio(id, updates) {
     if (!id) return null;
 
     // Whitelist de campos editables
-    const allowed = ['nombre_negocio', 'telefono_negocio', 'google_sheet_url'];
+    const allowed = [
+        'nombre_negocio',
+        'telefono_negocio',
+        'google_sheet_url',
+        'google_sheet_id',
+        'google_apps_script_url',
+        'google_apps_script_secret',
+        'google_sync_enabled',
+        'google_sync_status',
+        'google_last_sync_at',
+        'google_last_sync_error'
+    ];
     const safe = {};
     for (const k of allowed) {
         if (k in updates) safe[k] = updates[k];

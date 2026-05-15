@@ -112,6 +112,7 @@ body {
     color: var(--color-text);
     font-family: 'Bristol', serif;
     letter-spacing: -1px;
+    white-space: nowrap;
 }
 
 .hero-content .subtitle {
@@ -1327,6 +1328,7 @@ h3 {
     font-family: 'Bristol', serif;
     letter-spacing: -0.5px;
     transition: color 0.3s ease;
+    white-space: nowrap;
 }
 
 .logo a:hover {
