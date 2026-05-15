@@ -5,33 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pedidos — Umai Sushi</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/dashboard/dashboard.css">
 </head>
 <body class="dashboard-body">
     <div id="dash-loading" class="dash-loading">Cargando…</div>
 
-    <div class="dash-layout" id="dash-layout" style="display:none;">
-        <div id="dash-sidebar-mount"></div>
+    <div id="dash-main-wrap" style="display:none;">
+        <header id="dash-header-mount"></header>
+        <aside id="dash-drawer-mount"></aside>
 
         <main class="dash-main">
-            <div class="dash-header">
-                <h2>Pedidos</h2>
-                <span class="dash-header-meta" id="pedidos-count">— pedidos</span>
-            </div>
-
-            <div class="dash-toolbar">
-                <div class="dash-filters" id="filtros">
-                    <button class="dash-filter-btn active" data-filter="activos">Activos</button>
-                    <button class="dash-filter-btn" data-filter="entregados">Entregados</button>
-                    <button class="dash-filter-btn" data-filter="todos">Todos</button>
+            <div class="dash-container">
+                <div class="dash-page-header">
+                    <h2>Pedidos</h2>
+                    <span class="dash-meta" id="pedidos-count">— pedidos</span>
                 </div>
-                <div class="dash-search">
-                    <input type="search" id="search-input" placeholder="Buscar por cliente o teléfono…" autocomplete="off">
-                </div>
-            </div>
 
-            <div id="lista-pedidos"></div>
+                <div class="dash-toolbar">
+                    <div class="dash-filters" id="filtros">
+                        <button class="dash-filter-btn active" data-filter="activos">Activos</button>
+                        <button class="dash-filter-btn" data-filter="entregados">Entregados</button>
+                        <button class="dash-filter-btn" data-filter="todos">Todos</button>
+                    </div>
+                    <div class="dash-search">
+                        <input type="search" id="search-input" placeholder="Buscar por cliente o teléfono…" autocomplete="off">
+                    </div>
+                </div>
+
+                <div id="lista-pedidos"></div>
+            </div>
         </main>
     </div>
 
@@ -45,7 +47,6 @@
     <script src="/shared/dashboard-shell.js"></script>
 
     <script>
-        // ===== Helpers =====
         function escapeHtml(s) {
             return String(s == null ? '' : s)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -64,7 +65,6 @@
             return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
         }
 
-        // Transiciones de estado
         const TRANSITIONS = {
             nuevo:      { next: 'preparando', label: 'Empezar a preparar' },
             preparando: { next: 'listo',      label: 'Marcar listo' },
@@ -73,16 +73,14 @@
             cancelado:  null
         };
 
-        // ===== Estado en memoria =====
         let state = {
-            pedidos: [],          // todos los pedidos cargados
+            pedidos: [],
             negocioId: null,
             filtro: 'activos',
             search: '',
-            newPedidoIds: new Set() // pedidos que llegaron por realtime (para animar)
+            newPedidoIds: new Set()
         };
 
-        // ===== Render =====
         function listaProductosHtml(productos) {
             const items = Array.isArray(productos) ? productos : [];
             if (!items.length) return '<li class="muted">Sin productos</li>';
@@ -92,7 +90,6 @@
         }
         function listaExtrasHtml(extras) {
             if (!extras) return '';
-            // extras puede ser array de line items, mapa { id: cant }, o legacy { teriyaki, soja }
             let lines = [];
             if (Array.isArray(extras)) {
                 lines = extras.filter(x => (x.cantidad || 0) > 0).map(x => ({
@@ -101,7 +98,6 @@
                     sub: (Number(x.precio) || 0) * (Number(x.cantidad) || 0)
                 }));
             } else if (typeof extras === 'object') {
-                // legacy o map
                 if ('teriyaki' in extras || 'soja' in extras) {
                     if (extras.teriyaki > 0) lines.push({ label: 'salsa teriyaki', cantidad: extras.teriyaki, sub: extras.teriyaki * 500 });
                     if (extras.soja > 0)     lines.push({ label: 'salsa de soja',  cantidad: extras.soja,     sub: extras.soja * 500 });
@@ -128,19 +124,19 @@
                 <p><strong>Entrega:</strong> ${escapeHtml(p.entrega || '—')}</p>`;
             if (esDom) {
                 if (p.direccion_texto) h += `<p><strong>Dirección:</strong> ${escapeHtml(p.direccion_texto)}</p>`;
-                if (p.maps_url) h += `<p><strong>Maps:</strong> <a href="${escapeHtml(p.maps_url)}" target="_blank" rel="noopener">ver ubicación</a></p>`;
+                if (p.maps_url && p.maps_url !== 'No especificada') h += `<p><strong>Maps:</strong> <a href="${escapeHtml(p.maps_url)}" target="_blank" rel="noopener">ver ubicación</a></p>`;
             }
 
             const t = TRANSITIONS[p.estado];
             let actionsHtml = '';
             if (t) {
-                actionsHtml += `<button class="pedido-action-btn" data-action="next" data-id="${escapeHtml(p.id)}" data-next="${t.next}">${escapeHtml(t.label)}</button>`;
+                actionsHtml += `<button class="dash-action-btn" data-action="next" data-id="${escapeHtml(p.id)}" data-next="${t.next}">${escapeHtml(t.label)}</button>`;
             }
             if (p.estado !== 'cancelado' && p.estado !== 'entregado') {
-                actionsHtml += `<button class="pedido-action-btn btn-secondary" data-action="cancel" data-id="${escapeHtml(p.id)}">Cancelar</button>`;
+                actionsHtml += `<button class="dash-action-btn dash-action-secondary" data-action="cancel" data-id="${escapeHtml(p.id)}">Cancelar</button>`;
             }
             if (actionsHtml) {
-                h += `<div class="pedido-actions">${actionsHtml}</div>`;
+                h += `<div class="dash-pedido-actions">${actionsHtml}</div>`;
             }
             return h;
         }
@@ -148,15 +144,15 @@
             const estado = p.estado || 'nuevo';
             const isNew = state.newPedidoIds.has(p.id);
             return `
-                <div class="pedido-item estado-${escapeHtml(estado)} ${isNew ? 'is-new' : ''}" data-pedido-id="${escapeHtml(p.id)}">
-                    <div class="pedido-head" data-toggle="1">
+                <div class="dash-pedido-item dash-estado-${escapeHtml(estado)} ${isNew ? 'dash-is-new' : ''}" data-pedido-id="${escapeHtml(p.id)}">
+                    <div class="dash-pedido-head" data-toggle="1">
                         <div>
                             <h4>${escapeHtml(p.cliente || 'Cliente')}</h4>
-                            <p class="pedido-meta">${formatFecha(p.fecha)} · ${formatPrecio(p.total)} · ${escapeHtml(p.entrega || '')}</p>
+                            <p class="dash-pedido-meta">${formatFecha(p.fecha)} · ${formatPrecio(p.total)} · ${escapeHtml(p.entrega || '')}</p>
                         </div>
-                        <span class="pedido-estado estado-${escapeHtml(estado)}">${escapeHtml(estado)}</span>
+                        <span class="dash-pedido-estado dash-estado-${escapeHtml(estado)}">${escapeHtml(estado)}</span>
                     </div>
-                    <div class="pedido-body" hidden>${pedidoBodyHtml(p)}</div>
+                    <div class="dash-pedido-body" hidden>${pedidoBodyHtml(p)}</div>
                 </div>`;
         }
 
@@ -180,15 +176,13 @@
             const filtrados = filtrarPedidos();
             document.getElementById('pedidos-count').textContent = `${filtrados.length} pedidos`;
             if (!filtrados.length) {
-                host.innerHTML = '<div class="pedido-empty">Sin pedidos para este filtro.</div>';
+                host.innerHTML = '<div class="dash-empty">Sin pedidos para este filtro.</div>';
                 return;
             }
             host.innerHTML = filtrados.map(pedidoCardHtml).join('');
-            // Borrar marca "is-new" después de renderizar (animación se dispara una vez)
             setTimeout(() => state.newPedidoIds.clear(), 200);
         }
 
-        // ===== Acciones =====
         async function transicionarEstado(pedidoId, nuevoEstado, btn) {
             if (btn) { btn.disabled = true; btn.textContent = 'Actualizando…'; }
             const actualizado = await actualizarEstadoPedido(pedidoId, nuevoEstado);
@@ -197,25 +191,21 @@
                 if (btn) { btn.disabled = false; btn.textContent = TRANSITIONS[state.pedidos.find(p => p.id === pedidoId)?.estado]?.label || 'Reintentar'; }
                 return;
             }
-            // Actualizar pedido en estado local
             const idx = state.pedidos.findIndex(p => p.id === pedidoId);
             if (idx >= 0) state.pedidos[idx] = actualizado;
             renderLista();
         }
 
-        // ===== Realtime =====
         let realtimeChannel = null;
         function subscribirRealtime(negocioId) {
             const supabase = getSupabase();
             if (!supabase || !negocioId) return;
-            // Cleanup channel previo si existe
             if (realtimeChannel) supabase.removeChannel(realtimeChannel);
             realtimeChannel = supabase
                 .channel('pedidos-' + negocioId)
                 .on('postgres_changes',
                     { event: 'INSERT', schema: 'public', table: 'pedidos', filter: `negocio_id=eq.${negocioId}` },
                     payload => {
-                        console.log('[realtime] INSERT pedido', payload.new.id);
                         state.pedidos.unshift(payload.new);
                         state.newPedidoIds.add(payload.new.id);
                         renderLista();
@@ -224,7 +214,6 @@
                 .on('postgres_changes',
                     { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: `negocio_id=eq.${negocioId}` },
                     payload => {
-                        console.log('[realtime] UPDATE pedido', payload.new.id);
                         const idx = state.pedidos.findIndex(p => p.id === payload.new.id);
                         if (idx >= 0) {
                             state.pedidos[idx] = payload.new;
@@ -237,7 +226,6 @@
                 });
         }
 
-        // ===== Init =====
         (async () => {
             const ctx = await bootstrapDashPage('pedidos');
             if (!ctx) return;
@@ -247,15 +235,10 @@
                 return;
             }
             state.negocioId = negocio.id;
-
-            // Carga inicial
             state.pedidos = await obtenerPedidos({ negocioId: negocio.id, limite: 100 });
             renderLista();
-
-            // Realtime subscription
             subscribirRealtime(negocio.id);
 
-            // Filtros
             document.querySelectorAll('.dash-filter-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     document.querySelectorAll('.dash-filter-btn').forEach(b => b.classList.remove('active'));
@@ -265,23 +248,19 @@
                 });
             });
 
-            // Búsqueda
             document.getElementById('search-input').addEventListener('input', e => {
                 state.search = e.target.value;
                 renderLista();
             });
 
-            // Click delegation: expand + actions
             document.getElementById('lista-pedidos').addEventListener('click', async e => {
-                // Action buttons
                 const actionBtn = e.target.closest('[data-action]');
                 if (actionBtn) {
                     e.stopPropagation();
                     const action = actionBtn.dataset.action;
                     const id = actionBtn.dataset.id;
                     if (action === 'next') {
-                        const next = actionBtn.dataset.next;
-                        await transicionarEstado(id, next, actionBtn);
+                        await transicionarEstado(id, actionBtn.dataset.next, actionBtn);
                     } else if (action === 'cancel') {
                         if (confirm('¿Cancelar este pedido?')) {
                             await transicionarEstado(id, 'cancelado', actionBtn);
@@ -289,10 +268,9 @@
                     }
                     return;
                 }
-                // Toggle expand
                 const head = e.target.closest('[data-toggle]');
                 if (head) {
-                    const body = head.parentElement.querySelector('.pedido-body');
+                    const body = head.parentElement.querySelector('.dash-pedido-body');
                     if (body) body.hidden = !body.hidden;
                 }
             });

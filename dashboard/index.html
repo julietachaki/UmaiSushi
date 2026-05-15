@@ -5,63 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard — Umai Sushi</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/dashboard/dashboard.css">
 </head>
 <body class="dashboard-body">
     <div id="dash-loading" class="dash-loading">Cargando dashboard…</div>
 
-    <div class="dash-layout" id="dash-layout" style="display:none;">
-        <div id="dash-sidebar-mount"></div>
+    <div id="dash-main-wrap" style="display:none;">
+        <header id="dash-header-mount"></header>
+        <aside id="dash-drawer-mount"></aside>
 
         <main class="dash-main">
-            <div class="dash-header">
-                <h2>Bienvenida</h2>
-                <span class="dash-header-meta" id="dash-fecha">—</span>
-            </div>
-
-            <div id="dash-error-container"></div>
-
-            <div class="dash-grid">
-                <div class="dash-card">
-                    <h3>Negocio</h3>
-                    <div class="dash-card-row">
-                        <span>Nombre</span><strong id="negocio-nombre">—</strong>
-                    </div>
-                    <div class="dash-card-row">
-                        <span>Slug</span><strong id="negocio-slug">—</strong>
-                    </div>
-                    <div class="dash-card-row">
-                        <span>Teléfono</span><strong id="negocio-telefono">—</strong>
-                    </div>
+            <div class="dash-container">
+                <div class="dash-page-header">
+                    <h2>Bienvenida</h2>
+                    <span class="dash-meta" id="dash-fecha">—</span>
                 </div>
 
-                <div class="dash-card">
-                    <h3>Links rápidos</h3>
-                    <div class="dash-card-row">
-                        <span>Catálogo público</span>
-                        <a id="link-catalogo" href="#" target="_blank">abrir →</a>
-                    </div>
-                    <div class="dash-card-row">
-                        <span>Ver pedidos</span>
-                        <a href="/dashboard/pedidos.html">abrir →</a>
-                    </div>
-                    <div class="dash-card-row">
-                        <span>Editar menú</span>
-                        <a href="/dashboard/menu.html">abrir →</a>
-                    </div>
-                </div>
+                <div id="dash-error-container"></div>
 
-                <div class="dash-card">
-                    <h3>Próximamente</h3>
-                    <div class="dash-card-row" style="color:#aaa">
-                        <span>Finanzas</span><span>—</span>
+                <div class="dash-grid">
+                    <div class="dash-card">
+                        <h3>Negocio</h3>
+                        <div class="dash-card-row">
+                            <span>Nombre</span><strong id="negocio-nombre">—</strong>
+                        </div>
+                        <div class="dash-card-row">
+                            <span>Slug</span><strong id="negocio-slug">—</strong>
+                        </div>
+                        <div class="dash-card-row">
+                            <span>Teléfono</span><strong id="negocio-telefono">—</strong>
+                        </div>
                     </div>
-                    <div class="dash-card-row" style="color:#aaa">
-                        <span>Analytics</span><span>—</span>
+
+                    <div class="dash-card">
+                        <h3>Links rápidos</h3>
+                        <div class="dash-card-row">
+                            <span>Catálogo público</span>
+                            <a id="link-catalogo" href="#" target="_blank">abrir →</a>
+                        </div>
+                        <div class="dash-card-row">
+                            <span>Ver pedidos</span>
+                            <a href="/dashboard/pedidos.html">abrir →</a>
+                        </div>
+                        <div class="dash-card-row">
+                            <span>Editar menú</span>
+                            <a href="/dashboard/menu.html">abrir →</a>
+                        </div>
                     </div>
-                    <div class="dash-card-row" style="color:#aaa">
-                        <span>Google Sheets</span><span>—</span>
+
+                    <div class="dash-card">
+                        <h3>Próximamente</h3>
+                        <div class="dash-card-row" style="color:#aaa">
+                            <span>Finanzas</span><span>—</span>
+                        </div>
+                        <div class="dash-card-row" style="color:#aaa">
+                            <span>Analytics</span><span>—</span>
+                        </div>
+                        <div class="dash-card-row" style="color:#aaa">
+                            <span>Google Sheets</span><span>—</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -99,7 +101,7 @@
             document.getElementById('negocio-nombre').textContent = negocio.nombre_negocio || '—';
             document.getElementById('negocio-slug').textContent = negocio.slug || '—';
             document.getElementById('negocio-telefono').textContent = negocio.telefono_negocio || '—';
-            document.getElementById('link-catalogo').href = `/u/${negocio.slug}/`;
+            document.getElementById('link-catalogo').href = `/u/?slug=${encodeURIComponent(negocio.slug)}`;
         })();
     </script>
 </body>

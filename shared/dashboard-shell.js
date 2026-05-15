@@ -1,22 +1,26 @@
 /**
  * DASHBOARD SHELL — UmaiSushi
  *
- * Helpers para montar el chrome común del dashboard (sidebar, header,
- * logout). Las páginas privadas /dashboard/* lo invocan después de
- * pasar el auth-guard.
+ * Inyecta el chrome común del dashboard (navbar top + mobile drawer +
+ * logout). Replica el patrón visual del navbar público (.main-header,
+ * .logo, .nav-desktop, .hamburger, .sidebar) para que el admin se
+ * sienta como continuación del sitio.
  *
- * Uso:
- *   <div id="dash-sidebar-mount"></div>
+ * Uso en cada página /dashboard/*.html:
+ *
+ *   <header id="dash-header-mount"></header>
+ *   <aside id="dash-drawer-mount"></aside>
+ *   <main class="dash-main">...</main>
  *   ...
- *   mountDashSidebar({ active: 'pedidos', userEmail, negocio });
+ *   const ctx = await bootstrapDashPage('pedidos');
  */
 
 const DASH_NAV_ITEMS = [
-    { key: 'inicio', label: 'Inicio', href: '/dashboard/' },
-    { key: 'pedidos', label: 'Pedidos', href: '/dashboard/pedidos.html' },
-    { key: 'menu', label: 'Menú', href: '/dashboard/menu.html' },
-    { key: 'zonas', label: 'Zonas', href: '/dashboard/zonas.html' },
-    { key: 'configuracion', label: 'Configuración', href: '/dashboard/configuracion.html' }
+    { key: 'inicio',        label: 'Inicio',         href: '/dashboard/' },
+    { key: 'pedidos',       label: 'Pedidos',        href: '/dashboard/pedidos.html' },
+    { key: 'menu',          label: 'Menú',           href: '/dashboard/menu.html' },
+    { key: 'zonas',         label: 'Zonas',          href: '/dashboard/zonas.html' },
+    { key: 'configuracion', label: 'Configuración',  href: '/dashboard/configuracion.html' }
 ];
 
 function dashEscapeHtml(s) {
@@ -27,53 +31,84 @@ function dashEscapeHtml(s) {
         .replace(/"/g, '&quot;');
 }
 
+function dashToggleDrawer() {
+    const sidebar = document.getElementById('dash-mobile-drawer');
+    if (sidebar) sidebar.classList.toggle('active');
+}
+
 /**
- * Inyectar el sidebar en el contenedor #dash-sidebar-mount.
+ * Inyecta el navbar top + mobile drawer.
  * @param {{ active: string, userEmail?: string, negocio?: object }} opts
  */
-function mountDashSidebar(opts = {}) {
-    const mount = document.getElementById('dash-sidebar-mount');
-    if (!mount) {
-        console.warn('[dashboard-shell] No hay #dash-sidebar-mount, salteo');
+function mountDashShell(opts = {}) {
+    const headerMount = document.getElementById('dash-header-mount');
+    const drawerMount = document.getElementById('dash-drawer-mount');
+    if (!headerMount) {
+        console.warn('[dashboard-shell] No hay #dash-header-mount');
         return;
     }
     const active = opts.active || 'inicio';
     const email = opts.userEmail || '';
     const negocio = opts.negocio || null;
+    const brandLabel = negocio?.nombre_negocio || 'Umai Sushi';
 
-    const navHtml = DASH_NAV_ITEMS.map(item => {
-        const cls = item.key === active ? 'active' : '';
+    const navDesktopHtml = DASH_NAV_ITEMS.map(item => {
+        const cls = item.key === active ? 'dash-active' : '';
         return `<a href="${item.href}" class="${cls}">${dashEscapeHtml(item.label)}</a>`;
     }).join('');
 
-    mount.innerHTML = `
-        <aside class="dash-sidebar">
-            <h1>${dashEscapeHtml(negocio?.nombre_negocio || 'Umai Sushi')}</h1>
-            <p class="dash-sub">Panel admin</p>
-            <nav>${navHtml}</nav>
-            <div class="dash-sidebar-footer">
-                <div class="dash-user-email">${dashEscapeHtml(email)}</div>
-                <button class="dash-logout-btn" id="dash-logout-btn">Cerrar sesión</button>
+    const navDrawerHtml = DASH_NAV_ITEMS.map(item => {
+        const cls = item.key === active ? 'dash-active' : '';
+        return `<a href="${item.href}" class="${cls}" onclick="dashToggleDrawer()">${dashEscapeHtml(item.label)}</a>`;
+    }).join('');
+
+    headerMount.outerHTML = `
+        <header class="main-header">
+            <div class="dash-container">
+                <div class="dash-logo">
+                    <a href="/dashboard/">${dashEscapeHtml(brandLabel)}</a>
+                </div>
+                <nav class="dash-nav-desktop">${navDesktopHtml}</nav>
+                <div class="dash-user-menu">
+                    <span class="dash-user-email" title="${dashEscapeHtml(email)}">${dashEscapeHtml(email)}</span>
+                    <button type="button" class="dash-logout-btn" id="dash-logout-btn">Salir</button>
+                </div>
+                <div class="dash-hamburger" onclick="dashToggleDrawer()" aria-label="Abrir menú">
+                    <span></span><span></span><span></span>
+                </div>
             </div>
-        </aside>
+        </header>
     `;
 
-    // Wire logout
-    const logoutBtn = document.getElementById('dash-logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async () => {
-            logoutBtn.disabled = true;
-            logoutBtn.textContent = 'Cerrando…';
-            if (typeof signOut === 'function') await signOut();
-            location.replace('/login/');
-        });
+    if (drawerMount) {
+        drawerMount.outerHTML = `
+            <div class="dash-sidebar" id="dash-mobile-drawer">
+                <div class="dash-sidebar-overlay" onclick="dashToggleDrawer()"></div>
+                <div class="dash-sidebar-content">
+                    ${navDrawerHtml}
+                    <div class="dash-sidebar-user">
+                        <p>${dashEscapeHtml(email)}</p>
+                        <button type="button" class="dash-logout-btn" id="dash-logout-btn-mobile" style="width:100%; margin-top:8px;">Cerrar sesión</button>
+                    </div>
+                </div>
+            </div>
+        `;
     }
+
+    // Wire logout (ambos botones, desktop y mobile)
+    function doLogout() {
+        if (typeof signOut === 'function') signOut();
+        location.replace('/login/');
+    }
+    const btnDesk = document.getElementById('dash-logout-btn');
+    const btnMob = document.getElementById('dash-logout-btn-mobile');
+    if (btnDesk) btnDesk.addEventListener('click', doLogout);
+    if (btnMob) btnMob.addEventListener('click', doLogout);
 }
 
 /**
- * Helper: bootstrap completo. Hace auth-guard, obtiene negocio, monta
- * sidebar. Devuelve { session, negocio } o null si falla.
- * @param {string} activeKey - key del item activo en el sidebar
+ * Bootstrap: auth-guard + obtenerMiNegocio + mountDashShell.
+ * Devuelve { session, negocio } o null si falla.
  */
 async function bootstrapDashPage(activeKey) {
     if (typeof mountAuthGuard !== 'function') {
@@ -84,13 +119,12 @@ async function bootstrapDashPage(activeKey) {
     if (!session) return null;
 
     const negocio = typeof obtenerMiNegocio === 'function' ? await obtenerMiNegocio() : null;
-    mountDashSidebar({ active: activeKey, userEmail: session.user.email, negocio });
+    mountDashShell({ active: activeKey, userEmail: session.user.email, negocio });
 
-    // Mostrar layout
     const loading = document.getElementById('dash-loading');
     if (loading) loading.style.display = 'none';
-    const layout = document.getElementById('dash-layout');
-    if (layout) layout.style.display = 'grid';
+    const main = document.getElementById('dash-main-wrap');
+    if (main) main.style.display = 'block';
 
     return { session, negocio };
 }
