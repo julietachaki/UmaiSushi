@@ -1090,8 +1090,6 @@ function confirmarPedido() {
     // Extras: estado en vivo (map) + snapshot congelado para guardar
     const extrasMap = obtenerExtrasStored();
     const extrasSnapshot = typeof extrasLineItems === 'function' ? extrasLineItems(extrasMap) : [];
-    const fechaHora = formatPedidoTimestamp(new Date());
-
     let ubicacionLink = '';
     let direccionTexto = '';
 
@@ -1134,7 +1132,6 @@ function confirmarPedido() {
         total: totalNumerico,
         pago,
         entrega,
-        fechaHoraPedido: fechaHora,
         direccion_texto: direccionTexto,
         maps_url: ubicacionLink || 'No especificada'
     };
@@ -1151,6 +1148,7 @@ function confirmarPedido() {
                 showError(errorFinal, 'No se pudo guardar el pedido.');
                 return;
             }
+
             console.log('[confirmar] Pedido guardado:', pedidoGuardado.id);
 
             // ===== LIMPIAR CARRITO =====
@@ -1161,6 +1159,7 @@ function confirmarPedido() {
             // ===== LINK REAL DEL PEDIDO =====
             const baseUrl = window.location.origin;
             const linkPedido = `${baseUrl}/cocina.html?id=${pedidoGuardado.id}`;
+
 
             // ===== MENSAJE FINAL =====
             const mensajeFinal = construirMensajeWhatsApp({

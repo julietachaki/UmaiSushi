@@ -838,7 +838,10 @@ function renderCocina(activeTab) {
                     return aEntregado ? 1 : -1;
                 }
                 // best-effort: si vino fechaHoraPedido en formato legible, dejamos el orden natural (unshift ya mete nuevos arriba)
-                return new Date(b.fecha) - new Date(a.fecha);
+                const fechaA = a.fecha ? new Date(a.fecha).getTime() : 0;
+                const fechaB = b.fecha ? new Date(b.fecha).getTime() : 0;
+
+                return fechaB - fechaA;
             });
 
             // Filtrado

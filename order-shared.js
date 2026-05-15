@@ -187,11 +187,29 @@ function ubicacionKitchenHtml(url) {
  * Cocina/listado: marca de tiempo legible compatible con pedidos viejos (horario)
  */
 function formatoMarcaTemporalPedido(pedido) {
-    if (pedido && pedido.fechaHoraPedido) return pedido.fechaHoraPedido;
-    if (pedido && pedido.horario) return pedido.horario;
+    if (!pedido) return '—';
+
+    // Nueva estructura Supabase
+    if (pedido.fecha) {
+        try {
+            return new Date(pedido.fecha).toLocaleString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            console.error('[fecha] Error formateando fecha:', e);
+        }
+    }
+
+    // Compatibilidad pedidos viejos
+    if (pedido.fechaHoraPedido) return pedido.fechaHoraPedido;
+    if (pedido.horario) return pedido.horario;
+
     return '—';
 }
-
 function construirMensajeWhatsApp(params) {
     var nombre = params.cliente || '';
     var telefono = params.telefono || '';
@@ -209,7 +227,9 @@ function construirMensajeWhatsApp(params) {
     var costoEnvio = params.costoEnvio || 0;
     var entrega = params.entrega || '';
     var pago = params.pago || '';
-    var fechaHora = params.fechaHoraPedido || '';
+    var fechaHora = params.fecha
+        ? formatoMarcaTemporalPedido(params)
+        : (params.fechaHoraPedido || '');
     var ubicacionTxt = params.direccion_texto || '';
     var ubicacionLink = params.maps_url || '';
     var montoPagara = params.montoPagaraCon;
