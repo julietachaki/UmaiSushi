@@ -221,7 +221,7 @@ h3 {
     padding: 16px 18px;
     border: 1px solid rgba(15, 73, 15, 0.08);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
     transition: transform 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
@@ -230,7 +230,7 @@ h3 {
 }
 
 .product-card--compact {
-    align-items: center;
+    align-items: flex-start;
 }
 
 .product-main {
@@ -241,13 +241,14 @@ h3 {
     gap: 8px;
 }
 
+/* La imagen va a la derecha y queda fija. Stack vertical-center con
+   relación al card; en pantallas chicas baja de tamaño pero NUNCA
+   se reordena debajo del texto. */
 .product-side {
     flex-shrink: 0;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 10px;
-    justify-content: space-between;
+    align-items: flex-start;
+    justify-content: center;
 }
 
 .product-desc {
@@ -255,13 +256,11 @@ h3 {
     font-size: 0.95rem;
     color: var(--color-desc);
     font-family: 'Julius Sans One', sans-serif;
-    line-height: 1.35;
-    max-width: 100%;
-    display: -webkit-box;
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    line-height: 1.4;
+    /* Descripción completa visible — el card crece en altura si hace falta */
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
 }
 
 .product-card:hover {
@@ -271,11 +270,12 @@ h3 {
 }
 
 .product-img {
-    width: 90px;
-    height: 90px;
+    width: 110px;
+    height: 110px;
     object-fit: cover;
-    border-radius: 18px;
+    border-radius: 16px;
     flex-shrink: 0;
+    background: #f5f5f2;
 }
 
 .product-info {
@@ -554,31 +554,28 @@ h3 {
 }
 
 @media (max-width: 768px) {
+    /* Mantenemos el layout horizontal (imagen a la derecha) en mobile.
+       Solo bajamos el tamaño del card y de la imagen. */
     .product-card {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .product-side {
-        flex-direction: row;
-        justify-content: space-between;
-        width: 100%;
+        padding: 14px 14px;
+        gap: 14px;
     }
 
     .product-img {
-        width: 90px;
-        height: 90px;
+        width: 92px;
+        height: 92px;
+        border-radius: 14px;
     }
 
     .product-header h4 {
-        font-size: 1.6rem;
-        letter-spacing: 0.09em;
-        margin-bottom: 4px;
+        font-size: 1.05rem;
+        letter-spacing: 0.02em;
+        margin-bottom: 0;
     }
 
     .product-desc {
-        font-size: 0.8rem;
-        line-height: 1.25;
+        font-size: 0.82rem;
+        line-height: 1.3;
     }
 
     .price {
@@ -588,24 +585,26 @@ h3 {
 
 @media (max-width: 480px) {
     .product-card {
-        padding: 12px 14px;
-        gap: 12px;
+        padding: 12px 12px;
+        gap: 10px;
+        border-radius: 16px;
     }
 
     .product-header h4 {
-        font-size: 2rem;
-        letter-spacing: 0.1em;
-        line-height: 1.05;
+        font-size: 0.98rem;
+        letter-spacing: 0.01em;
+        line-height: 1.2;
     }
 
     .product-desc {
-        font-size: 0.76rem;
-        line-height: 1.18;
+        font-size: 0.78rem;
+        line-height: 1.25;
     }
 
     .product-img {
-        width: 90px;
-        height: 90px;
+        width: 78px;
+        height: 78px;
+        border-radius: 12px;
     }
 
     .counter {
@@ -963,49 +962,41 @@ h3 {
         gap: 10px;
     }
 
+    /* La imagen sigue a la derecha, ajustada para tablet/mobile.
+       NO truncamos descripción — debe entrar entera y el card crece
+       en altura. */
     .product-card--compact {
-        padding: 10px 10px;
-        gap: 10px;
-        border-radius: 14px;
-    }
-
-    .product-side {
-        gap: 6px;
+        padding: 12px 14px;
+        gap: 12px;
+        border-radius: 16px;
     }
 
     .product-img {
-        width: 62px;
-        height: 62px;
+        width: 96px;
+        height: 96px;
         flex-shrink: 0;
-    }
-
-    .product-info {
-        flex: 1;
+        border-radius: 14px;
     }
 
     .product-header h4 {
-        font-size: 0.95rem;
-        line-height: 1.15;
+        font-size: 1.05rem;
+        line-height: 1.2;
     }
 
     .product-desc {
-        font-size: 0.78rem;
-        line-height: 1.25;
-        display: -webkit-box;
-        line-clamp: 2;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+        font-size: 0.85rem;
+        line-height: 1.35;
+        /* Sin line-clamp: descripción completa */
     }
 
     .price {
-        font-size: 0.95rem;
+        font-size: 1rem;
     }
 
     .counter-btn--mini {
-        width: 22px;
-        height: 22px;
-        font-size: 0.9rem;
+        width: 24px;
+        height: 24px;
+        font-size: 0.95rem;
     }
 }
 
@@ -1028,49 +1019,68 @@ h3 {
         margin-bottom: 15px;
     }
 
+    /* Sticky bar mobile: layout horizontal compacto (NO column).
+       Cantidad + total + botón en una sola fila. */
     .sticky-bar {
-        gap: 8px;
+        gap: 10px;
         padding: 10px 12px;
-    }
-
-    .sticky-divider {
-        display: none;
+        flex-wrap: nowrap;
     }
 
     .sticky-info {
-        flex-direction: column;
-        gap: 8px;
-        width: 100%;
+        flex-direction: row;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
     }
 
     .sticky-qty, .sticky-total {
-        flex-direction: row;
-        gap: 8px;
+        flex-direction: column;
+        gap: 1px;
         align-items: center;
+        min-width: auto;
+    }
+
+    .sticky-qty-num,
+    .sticky-total-amount {
+        font-size: 1rem;
+    }
+    .sticky-qty-label,
+    .sticky-total-label {
+        font-size: 0.65rem;
     }
 
     .btn-sticky {
-        width: 100%;
-        padding: 10px 16px;
+        width: auto;
+        padding: 9px 14px;
+        font-size: 0.85rem;
+        white-space: nowrap;
     }
 
     .product-img {
-        width: 56px;
-        height: 56px;
+        width: 78px;
+        height: 78px;
         flex-shrink: 0;
+        border-radius: 12px;
     }
 
     .product-header {
         gap: 4px;
     }
 
+    .product-card--compact .product-header h4 {
+        font-size: 0.98rem;
+        letter-spacing: 0.01em;
+        line-height: 1.2;
+    }
+
     .product-desc {
-        font-size: 0.72rem;
-        line-height: 1.15;
+        font-size: 0.78rem;
+        line-height: 1.3;
     }
 
     .price {
-        font-size: 1.02rem;
+        font-size: 1rem;
         font-weight: 700;
         margin: 2px 0 0 0;
     }
@@ -1090,32 +1100,21 @@ h3 {
     }
 
     .counter-btn--mini {
-        width: 22px;
-        height: 22px;
-        font-size: 0.85rem;
+        width: 24px;
+        height: 24px;
+        font-size: 0.9rem;
     }
 
     .counter-qty--mini {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
     }
-}
 
-/* Menú mobile premium (tipo app delivery) */
-@media (max-width: 480px) {
-    .product-card--compact .product-header h4 {
-        font-size: 1.6rem;
-        letter-spacing: 0.2px;
-        line-height: 1.05;
-    }
     .product-card--compact {
-        padding: 10px 10px;
+        padding: 12px 12px;
         gap: 10px;
         border-radius: 16px;
     }
     .product-main {
-        gap: 3px;
-    }
-    .product-side {
         gap: 6px;
     }
 }

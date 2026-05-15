@@ -343,9 +343,6 @@ function renderMenu() {
               </div>
               <p class="product-desc">${umasushiEscapeHtml(desc)}</p>
               <p class="price">$${precio}</p>
-            </div>
-            <div class="product-side">
-              <img src="${umasushiEscapeHtml(img)}" alt="${umasushiEscapeHtml(nombre)}" class="product-img">
               <div class="product-actions">
                 <div class="counter counter--mini">
                   <button class="counter-btn counter-btn--mini" type="button" data-action="dec" data-name="${umasushiEscapeHtml(nombre)}">−</button>
@@ -353,6 +350,9 @@ function renderMenu() {
                   <button class="counter-btn counter-btn--mini" type="button" data-action="inc" data-name="${umasushiEscapeHtml(nombre)}">+</button>
                 </div>
               </div>
+            </div>
+            <div class="product-side">
+              <img src="${umasushiEscapeHtml(img)}" alt="${umasushiEscapeHtml(nombre)}" class="product-img">
             </div>
           </div>`;
     }
