@@ -186,8 +186,25 @@ function toggleMenu() {
 // ===== PEDIDO (carrito) =====
 
 function obtenerPedido() {
-    const pedido = localStorage.getItem('pedido');
-    return pedido ? JSON.parse(pedido) : [];
+    try {
+        const raw = localStorage.getItem('pedido');
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return [];
+        // Saneamos: solo items con nombre, cantidad numerica > 0 y precio numerico >= 0.
+        // Coerción explícita evita "1 producto $1" cuando localStorage trae strings o NaN.
+        return arr
+            .map(item => ({
+                ...item,
+                cantidad: Math.max(0, parseInt(item && item.cantidad, 10) || 0),
+                precio: Math.max(0, Number(item && item.precio) || 0)
+            }))
+            .filter(item => item.nombre && item.cantidad > 0);
+    } catch (e) {
+        console.warn('[pedido] localStorage corrupto, reseteando:', e.message);
+        try { localStorage.removeItem('pedido'); } catch (_) {}
+        return [];
+    }
 }
 
 function guardarPedido(pedido) {
@@ -396,12 +413,12 @@ function incrementarProducto(nombreProducto) {
     const existente = pedido.find(item => item.nombre === nombreProducto);
 
     if (existente) {
-        existente.cantidad += 1;
+        existente.cantidad = (parseInt(existente.cantidad, 10) || 0) + 1;
     } else {
         pedido.push({
             id: producto.id,
             nombre: producto.nombre,
-            precio: producto.precio,
+            precio: Number(producto.precio) || 0,
             desc: producto.descripcion || producto.desc || '',
             imagen: producto.imagen || '/static/producto.jpeg',
             categoria: producto.categoria || 'Productos',
@@ -418,7 +435,7 @@ function decrementarProducto(nombreProducto) {
     const existente = pedido.find(item => item.nombre === nombreProducto);
 
     if (existente) {
-        existente.cantidad -= 1;
+        existente.cantidad = (parseInt(existente.cantidad, 10) || 0) - 1;
         if (existente.cantidad <= 0) {
             pedido = pedido.filter(item => item.nombre !== nombreProducto);
         }
@@ -440,7 +457,12 @@ function actualizarContadores() {
 }
 
 function calcularTotalSoloProductos(pedido) {
-    return pedido.reduce((total, item) => total + item.precio * item.cantidad, 0);
+    if (!Array.isArray(pedido)) return 0;
+    return pedido.reduce((total, item) => {
+        const precio = Number(item && item.precio) || 0;
+        const cantidad = Math.max(0, parseInt(item && item.cantidad, 10) || 0);
+        return total + (precio * cantidad);
+    }, 0);
 }
 
 function actualizarStickyBar() {
@@ -448,13 +470,13 @@ function actualizarStickyBar() {
     const stickyBar = getEl('sticky-bar');
     if (!stickyBar) return;
 
-    const totalProductos = pedido.reduce((sum, item) => sum + item.cantidad, 0);
+    const totalProductos = pedido.reduce((sum, item) => sum + (parseInt(item.cantidad, 10) || 0), 0);
     const totalMonto = calcularTotalSoloProductos(pedido);
 
     const sq = getEl('sticky-qty-num');
     const st = getEl('sticky-total');
-    if (sq) sq.textContent = totalProductos;
-    if (st) st.textContent = `$${totalMonto}`;
+    if (sq) sq.textContent = String(totalProductos);
+    if (st) st.textContent = '$' + (totalMonto || 0);
 
     if (totalProductos > 0) stickyBar.classList.add('active');
     else stickyBar.classList.remove('active');
