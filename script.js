@@ -1261,7 +1261,33 @@ function confirmarPedido() {
             }
 
             console.log('[confirmar] Pedido guardado:', pedidoGuardado.id);
+            // ===== SYNC GOOGLE SHEETS (no bloqueante) =====
+            console.log('[sheets] currentNegocio:', currentNegocio);
+            
+            if (
+                currentNegocio &&
+                currentNegocio.google_sync_enabled &&
+                currentNegocio.google_apps_script_url &&
+                currentNegocio.google_apps_script_secret
+            ) {
+                console.log('[sheets] iniciando sync...');
+                enviarPedidoASheets(pedidoGuardado, currentNegocio)
+                    .then(function(result) {
 
+                        console.log('[sheets] resultado sync:', result);
+
+                        return marcarPedidoSincronizado(
+                            pedidoGuardado.id,
+                            result
+                        );
+
+                    })
+                    .catch(function(err) {
+
+                        console.error('[sheets] sync error:', err);
+
+                    });
+            }
             // ===== LIMPIAR CARRITO =====
             guardarPedido([]);
             removeLS(LS_EXTRAS);
@@ -1290,13 +1316,13 @@ function confirmarPedido() {
                              '542604539727';
             const urlWa = `https://wa.me/${telefono}?text=${encodeURIComponent(mensajeFinal)}`;
 
-            window.open(urlWa, '_blank');
+            //window.open(urlWa, '_blank');
 
             // ===== REDIRECCIÓN al catálogo del negocio =====
             const homeUrl = location.pathname.startsWith('/u/')
                 ? `/u/?slug=${encodeURIComponent(slug)}`
                 : 'index.html';
-            window.location.href = homeUrl;
+            //window.location.href = homeUrl;
         })
         .catch(function(err) {
             console.error('[confirmar] Error creando pedido:', err);

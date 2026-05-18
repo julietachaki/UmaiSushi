@@ -218,3 +218,10 @@ No hay rollback automático. Si una migración rompe algo:
 2. Aplicarla con `supabase db push`.
 
 **Nunca** editar una migración ya commiteada/aplicada.
+create policy "public_can_insert_pedidos"
+on pedidos
+for insert
+to anon, authenticated
+with check (
+    negocio_id is not null
+);

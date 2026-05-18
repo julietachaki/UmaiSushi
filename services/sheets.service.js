@@ -168,7 +168,7 @@ function pedidoToSheetsRow(pedido) {
  *                           google_apps_script_secret y sync_enabled
  * @returns {Promise<{ok:boolean, error?:string, syncedAt?:string}>}
  */
-async function enviarPedidoASheets(pedido, negocio) {
+/**async function enviarPedidoASheets(pedido, negocio) {
     if (!negocio || !negocio.google_sync_enabled) {
         return { ok: false, error: 'sync_disabled' };
     }
@@ -200,7 +200,50 @@ async function enviarPedidoASheets(pedido, negocio) {
         return { ok: false, error: e.message || String(e) };
     }
 }
+*/
+async function enviarPedidoASheets(pedido, negocio) {
 
+    if (!negocio || !negocio.google_sync_enabled) {
+        return { ok: false, error: 'sync_disabled' };
+    }
+
+    const supabase = getSupabase();
+
+    try {
+
+        const { data, error } = await supabase.functions.invoke(
+            'sync-pedido-to-sheet',
+            {
+                body: {
+                    pedido_id: pedido.id
+                }
+            }
+        );
+
+        if (error) {
+            console.error('[sheets] edge function error:', error);
+            return {
+                ok: false,
+                error: error.message || 'edge_function_error'
+            };
+        }
+
+        return {
+            ok: true,
+            data
+        };
+
+    } catch (e) {
+
+        console.error('[sheets] invoke exception:', e);
+
+        return {
+            ok: false,
+            error: e.message || String(e)
+        };
+
+    }
+}
 /**
  * Marca un pedido como sincronizado (o con error) en Supabase.
  * Requiere auth (RLS valida owner).
