@@ -74,7 +74,10 @@ body {
     width: 30px;
     height: 30px;
 }
-
+.horarios strong {
+    display: inline-block;
+    line-height: 1.2;
+}
 /* Hero Section */
 .hero {
     background-color: var(--color-border);
@@ -187,7 +190,7 @@ h2 {
 h3 {
     font-size: 1.4rem;
     margin-bottom: 25px;
-    color: var(--color-text);
+    color: var(--color-desc);
     font-weight: 700;
     padding-top: 20px;
     padding-bottom: 10px;
@@ -1147,7 +1150,7 @@ se reordena debajo del texto. */
     }
 
     .product-header h4 {
-        font-size: 1rem;
+        font-size: 1.05rem;
         font-weight: 700;
         line-height: 1.25;
         letter-spacing: 0.01em;
@@ -1155,7 +1158,7 @@ se reordena debajo del texto. */
 
     .product-header {
         gap: 6px;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
     }
     .product-card--compact {
         padding: 7px 7px;
@@ -1172,26 +1175,27 @@ se reordena debajo del texto. */
     .product-desc {
         /* Más chica en mobile para que entre ordenada al lado de la imagen */
         font-size: 0.5rem;
-        line-height: 1.45;
+        line-height: 1.1;
+        letter-spacing: -1px;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
 
     .price {
         /* Igual al título a este breakpoint */
-        font-size: 0.98rem;
+        font-size: 1.05rem;
         font-weight: 700;
         margin: 2px 0 0 0;
     }
 
     .product-icons {
-        gap: 2px;
+        gap: 4px;
     }
 
     .icon-gluten,
     .icon-veggi {
-        width: 18px;
-        height: 18px;
+        width: 30px;
+        height: 30px;
     }
 
     .counter--mini {
