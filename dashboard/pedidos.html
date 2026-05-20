@@ -121,7 +121,12 @@
                 <p><strong>Total:</strong> <strong>${formatPrecio(p.total)}</strong></p>
                 <p><strong>Pago:</strong> ${escapeHtml(p.metodo_pago || '—')}</p>
                 ${p.monto_efectivo ? `<p><strong>Paga con:</strong> ${formatPrecio(p.monto_efectivo)}</p>` : ''}
-                <p><strong>Entrega:</strong> ${escapeHtml(p.entrega || '—')}</p>`;
+                <p><strong>Entrega:</strong> ${escapeHtml(p.entrega || '—')}</p>
+                ${p.indicaciones_cliente
+                    ? `<p><strong>Indicaciones:</strong> ${escapeHtml(p.indicaciones_cliente)}</p>`
+                    : ''
+                }
+            `;
             if (esDom) {
                 if (p.direccion_texto) h += `<p><strong>Dirección:</strong> ${escapeHtml(p.direccion_texto)}</p>`;
                 if (p.maps_url && p.maps_url !== 'No especificada') h += `<p><strong>Maps:</strong> <a href="${escapeHtml(p.maps_url)}" target="_blank" rel="noopener">ver ubicación</a></p>`;

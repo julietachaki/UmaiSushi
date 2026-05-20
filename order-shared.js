@@ -261,8 +261,7 @@ function construirMensajeWhatsApp(params) {
         }
     }
     lineas.push('');
-    lineas.push('Subtotal menú: $' + subProd);
-    lineas.push('Extras: $' + montoExtras);
+
     if (entrega.indexOf('domicilio') !== -1) {
         lineas.push('Envío (' + (zonaNombre ? zonaNombre : 'Sin categoría') + '): $' + costoEnvio);
     }
@@ -272,6 +271,7 @@ function construirMensajeWhatsApp(params) {
     if (pago === 'Efectivo' && montoPagara != null && String(montoPagara).trim() !== '') {
         lineas.push('¿Con cuánto pagás?: $' + montoPagara);
     }
+    lineas.push('');
     lineas.push('Entrega: ' + entrega);
     lineas.push('');
     lineas.push('Fecha y hora del pedido: ' + fechaHora);

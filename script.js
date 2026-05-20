@@ -1371,6 +1371,7 @@ function confirmarPedido() {
             // ===== MENSAJE FINAL =====
             const mensajeFinal = construirMensajeWhatsApp({
                 ...pedidoCompleto,
+                fecha: pedidoGuardado.fecha,
                 totalFinal: totalNumerico,
                 linkPedido
             });
@@ -1380,8 +1381,8 @@ function confirmarPedido() {
             // Fallback al hardcoded por compat — debería desaparecer cuando todos los
             // negocios tengan telefono_negocio cargado.
             const telefono = (currentNegocio && currentNegocio.telefono_negocio) ||
-                             (window.UMASUSHI_CONFIG && window.UMASUSHI_CONFIG.whatsappNumero) ||
-                             '542604539727';
+                            (window.UMASUSHI_CONFIG && window.UMASUSHI_CONFIG.whatsappNumero) ||
+                            '542604539727';
             const urlWa = `https://wa.me/${telefono}?text=${encodeURIComponent(mensajeFinal)}`;
 
             window.open(urlWa, '_blank');
