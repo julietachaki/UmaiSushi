@@ -392,17 +392,84 @@ function renderMenu() {
         byCat[c].push(p);
     });
 
-    host.innerHTML = (cats.length ? cats : Object.keys(byCat)).map(cat => {
+    const catList = cats.length ? cats : Object.keys(byCat);
+    const categoriasConProductos = catList.filter(cat => (byCat[cat] || []).length > 0);
+
+    // Renderizar navegación de tabs horizontal
+    const tabsHtml = `
+      <div class="menu-tabs-wrapper">
+        <div class="menu-tabs-scroll">
+          ${categoriasConProductos.map(cat => {
+              const tabId = 'menu-tab-' + umasushiEscapeHtml(cat).toLowerCase().replace(/\s+/g, '-');
+              return `<button class="menu-tab" data-category="${umasushiEscapeHtml(cat)}" data-tab-id="${tabId}">${umasushiEscapeHtml(cat)}</button>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    // Renderizar secciones del menú
+    const sectionsHtml = categoriasConProductos.map(cat => {
         const items = byCat[cat] || [];
         if (!items.length) return '';
+        const sectionId = 'menu-section-' + umasushiEscapeHtml(cat).toLowerCase().replace(/\s+/g, '-');
         return `
-          <div class="menu-section">
+          <div class="menu-section" id="${sectionId}">
             <h3>${umasushiEscapeHtml(cat)}</h3>
             <div class="products-grid">
               ${items.map(cardHtml).join('')}
             </div>
           </div>`;
     }).join('');
+
+    host.innerHTML = tabsHtml + sectionsHtml;
+
+    // Setup para navegación de tabs
+    const tabs = host.querySelectorAll('.menu-tab');
+    const sections = host.querySelectorAll('.menu-section');
+    
+    // Marcar primer tab como activo
+    if (tabs.length > 0) {
+        tabs[0].classList.add('active');
+    }
+
+    // Event listener para tabs
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const category = this.dataset.category;
+            const sectionId = 'menu-section-' + category.toLowerCase().replace(/\s+/g, '-');
+            const targetSection = host.querySelector('#' + sectionId);
+            
+            // Actualizar tabs activos
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Scroll a la sección
+            if (targetSection) {
+                targetSection.scrollIntoView({ behavior: 'auto', block: 'start' });
+            }
+        });
+    });
+
+    // Observer para actualizar tabs activos al hacer scroll
+    const sectionObserver = new IntersectionObserver(
+        (entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const sectionId = entry.target.id;
+                    tabs.forEach(tab => {
+                        const tabSectionId = 'menu-section-' + tab.dataset.category.toLowerCase().replace(/\s+/g, '-');
+                        if (tabSectionId === sectionId) {
+                            tabs.forEach(t => t.classList.remove('active'));
+                            tab.classList.add('active');
+                        }
+                    });
+                }
+            });
+        },
+        { threshold: 0.3 }
+    );
+    
+    sections.forEach(section => sectionObserver.observe(section));
 
     host.querySelectorAll('.counter-btn[data-action]').forEach(btn => {
         if (btn.dataset.bound === '1') return;
@@ -525,7 +592,7 @@ function renderPedido() {
             <img src="${umasushiEscapeHtml(img)}" alt="${umasushiEscapeHtml(item.nombre)}">
             <div class="item-details">
                 <div class="item-name">${umasushiEscapeHtml(item.nombre)}</div>
-                <div class="item-desc">${umasushiEscapeHtml(item.desc || '')}</div>
+
             </div>
             <div class="item-meta">
                 <div class="item-qty">${item.cantidad}×</div>
@@ -1225,7 +1292,7 @@ function confirmarPedido() {
         extrasMap,
         entrega === 'A domicilio' && zonaCoincidio ? costoEnvio : 0
     );
-
+    const indicaciones = document.getElementById('indicaciones-cliente')?.value?.trim() || '';
     const pedidoCompleto = {
         cliente: nombre,
         telefono,
@@ -1242,7 +1309,8 @@ function confirmarPedido() {
         pago,
         entrega,
         direccion_texto: direccionTexto,
-        maps_url: ubicacionLink || 'No especificada'
+        maps_url: ubicacionLink || 'No especificada',
+        indicaciones_cliente: indicaciones
     };
 
     if (pago === 'Efectivo') pedidoCompleto.montoPagaraCon = montoPagaraTxt;
@@ -1316,13 +1384,13 @@ function confirmarPedido() {
                              '542604539727';
             const urlWa = `https://wa.me/${telefono}?text=${encodeURIComponent(mensajeFinal)}`;
 
-            //window.open(urlWa, '_blank');
+            window.open(urlWa, '_blank');
 
             // ===== REDIRECCIÓN al catálogo del negocio =====
             const homeUrl = location.pathname.startsWith('/u/')
                 ? `/u/?slug=${encodeURIComponent(slug)}`
                 : 'index.html';
-            //window.location.href = homeUrl;
+            window.location.href = homeUrl;
         })
         .catch(function(err) {
             console.error('[confirmar] Error creando pedido:', err);
