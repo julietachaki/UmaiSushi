@@ -42,7 +42,8 @@ function pedidoToRow(p) {
         metodo_pago: p.metodo_pago || p.pago || null,
         monto_efectivo: p.monto_efectivo ?? p.montoPagaraCon ?? null,
         entrega: p.entrega || null,
-        estado: p.estado || 'nuevo'
+        estado: p.estado || 'nuevo',
+        indicaciones_cliente: p.indicaciones_cliente || null
         // `fecha` lo setea Postgres con default now()
     };
     // Multi-tenant: incluir negocio_id si vino. Cuando RLS se aprieta

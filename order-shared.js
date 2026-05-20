@@ -284,5 +284,10 @@ function construirMensajeWhatsApp(params) {
         lineas.push('Ver detalle del pedido:');
         lineas.push(params.linkPedido);
     }
+    // 👇 AGREGAR ESTO
+    if (params.indicaciones_cliente && params.indicaciones_cliente.trim() !== '') {
+        lineas.push('');
+        lineas.push('📝 Indicaciones: ' + params.indicaciones_cliente);
+    }
     return lineas.join('\n');
 }
