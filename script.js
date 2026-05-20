@@ -1122,6 +1122,7 @@ function inicializarPedidoUI() {
             this.classList.add('active');
             renderSeccionUbicacion();
             renderMontoEfectivoUI();
+            renderRetiroLocalMsg();
             actualizarTotal();
             if (name === 'entrega') {
                 const errFin = getEl('error-final');
@@ -1178,7 +1179,17 @@ function inicializarPedidoUI() {
 
     getEl('confirmar-btn')?.addEventListener('click', confirmarPedido);
 }
+function renderRetiroLocalMsg() {
+    const entregaBtn = document.querySelector('.option-btn[data-name="entrega"].active');
+    const msg = getEl('retiro-local-msg');
 
+    if (!msg) return;
+
+    const esRetiro = entregaBtn &&
+        entregaBtn.dataset.value.toLowerCase().includes('retiro');
+
+    msg.hidden = !esRetiro;
+}
 function confirmarPedido() {
     const errorNombre = getEl('error-nombre');
     const errorTelefono = getEl('error-telefono');

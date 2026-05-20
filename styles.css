@@ -77,8 +77,11 @@ body {
 
 /* Hero Section */
 .hero {
-    background-color: var(--color-secondary);
-    background-image: none;
+    background-color: var(--color-border);
+    background-image: linear-gradient(rgb(255, 251, 251), rgba(255, 254, 254, 0.35)),url(static/head.jpeg);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     min-height: 25vh;
     padding: 25px 10px;
     display: flex;
@@ -107,17 +110,18 @@ body {
 .hero-content h1 {
     font-size: 4rem;
     font-weight: 700;
-    margin-bottom: 15px;
-    color: var(--color-text);
+    margin-top: 50px;
+    margin-bottom: 0px;
+    color: var(--color-primary);
     font-family: 'Bristol', serif;
-    letter-spacing: -1px;
+    letter-spacing: 1.5px;
     white-space: nowrap;
 }
 
 .hero-content .subtitle {
     font-size: 2rem;
     font-weight: 400;
-    margin-bottom: 40px;
+    margin-bottom: 28px;
     color: var(--color-text);
     font-family: 'MoreSugar', cursive;
     letter-spacing: 0.5px;
@@ -1220,6 +1224,12 @@ se reordena debajo del texto. */
         padding: 10px 0;
         font-size: 1rem;
     }
+    .pedido-help-text {
+        margin-top: 8px;
+        font-size: 0.92rem;
+        color: #777;
+        line-height: 1.4;
+    }
 
 }
 
@@ -1359,7 +1369,7 @@ se reordena debajo del texto. */
     top: 0;
     left: 0;
     width: 100%;
-    background-color: rgba(255, 255, 255, 0.98);
+    background-color:#ffffffcc; /* Blanco con transparencia para efecto de vidrio esmerilado */
     backdrop-filter: blur(10px);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     z-index: 1000;
@@ -1383,7 +1393,7 @@ se reordena debajo del texto. */
     color: var(--color-primary);
     text-decoration: none;
     font-family: 'Bristol', serif;
-    letter-spacing: -0.5px;
+    letter-spacing: 1.5px;
     transition: color 0.3s ease;
     white-space: nowrap;
 }
