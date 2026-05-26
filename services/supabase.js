@@ -13,8 +13,8 @@
  */
 
 // ===== CONFIGURACIÓN =====
-const SUPABASE_URL = 'https://eqawmvmaohpsxydyepab.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_FikNriJW7_FoAbOFzIM_iQ__1m5OEax';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // ===== INICIALIZACIÓN =====
 let supabaseClient = null;
@@ -36,10 +36,10 @@ async function initSupabase() {
     try {
         // Validar que las credenciales estén configuradas
         if (!SUPABASE_URL || SUPABASE_URL.includes('REEMPLAZAR')) {
-            throw new Error('SUPABASE_URL no configurada. Reemplaza "REEMPLAZAR_URL" con tu URL de Supabase');
+            throw new Error('SUPABASE_URL no configurada.');
         }
         if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('REEMPLAZAR')) {
-            throw new Error('SUPABASE_ANON_KEY no configurada. Reemplaza "REEMPLAZAR_ANON_KEY" con tu clave anón');
+            throw new Error('SUPABASE_ANON_KEY no configurada.');
         }
 
         // Crear cliente usando la librería CDN
