@@ -2,16 +2,120 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Umai Sushi</title>
-    <meta http-equiv="refresh" content="0; url=/u/?slug=umai">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Umai Sushi — Dev</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="canonical" href="/u/?slug=umai">
-    <script>
-        // Redirect inmediato sin esperar refresh
-        location.replace('/u/?slug=umai');
-    </script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f9faf9;
+            color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        h1 {
+            font-family: 'Georgia', serif;
+            font-size: 2.4rem;
+            color: #0f490f;
+            margin-bottom: 4px;
+        }
+        .sub {
+            color: #666;
+            margin-bottom: 32px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            max-width: 640px;
+            width: 100%;
+        }
+        a {
+            display: block;
+            padding: 18px 20px;
+            background: #fff;
+            border: 1px solid #e0e8e0;
+            border-radius: 12px;
+            text-decoration: none;
+            color: #1a1a1a;
+            font-weight: 500;
+            transition: all 0.15s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+        a:hover {
+            border-color: #0f490f;
+            box-shadow: 0 4px 16px rgba(15,73,15,0.08);
+            transform: translateY(-1px);
+        }
+        a small {
+            display: block;
+            font-weight: 400;
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+        .section-label {
+            grid-column: 1 / -1;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #999;
+            margin-top: 8px;
+        }
+        hr { border: none; border-top: 1px solid #e0e8e0; margin: 4px 0 12px; grid-column: 1 / -1; }
+    </style>
 </head>
 <body>
-    <p>Redirigiendo a <a href="/u/?slug=umai">Umai Sushi</a>…</p>
+    <h1>Umai Sushi</h1>
+    <p class="sub">Panel de desarrollo</p>
+
+    <div class="grid">
+        <div class="section-label">Público</div>
+        <a href="/u/?slug=umai">
+            Catálogo
+            <small>/u/index.html</small>
+        </a>
+        <a href="/u/pedido.html?slug=umai">
+            Pedido
+            <small>/u/pedido.html</small>
+        </a>
+        <a href="/u/orden.html?slug=umai&id=">
+            Orden (vista pública)
+            <small>/u/orden.html</small>
+        </a>
+
+        <hr>
+
+        <div class="section-label">Administración</div>
+        <a href="/login/">
+            Login
+            <small>/login/index.html</small>
+        </a>
+        <a href="/dashboard/">
+            Dashboard
+            <small>/dashboard/index.html</small>
+        </a>
+        <a href="/dashboard/pedidos.html">
+            Pedidos
+            <small>/dashboard/pedidos.html</small>
+        </a>
+        <a href="/dashboard/menu.html">
+            Menú
+            <small>/dashboard/menu.html</small>
+        </a>
+        <a href="/dashboard/zonas.html">
+            Zonas
+            <small>/dashboard/zonas.html</small>
+        </a>
+        <a href="/dashboard/configuracion.html">
+            Configuración
+            <small>/dashboard/configuracion.html</small>
+        </a>
+    </div>
 </body>
 </html>

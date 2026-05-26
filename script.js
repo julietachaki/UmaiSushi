@@ -3,8 +3,19 @@
 // según el slug en la URL (path `/u/<slug>/...` o query `?slug=`).
 // Cuando no se especifica (legacy / paths viejos), default 'umai'.
 // ============================================================
+import { isSupabaseReady } from './services/supabase.js'
+import { obtenerProductos } from './services/productos.service.js'
+import { obtenerZonas } from './services/zonas.service.js'
+import { obtenerNegocioPorSlug } from './services/negocios.service.js'
+import { crearPedido } from './services/pedidos.service.js'
+import { enviarPedidoASheets, marcarPedidoSincronizado } from './services/sheets.service.js'
+import { setProductosCache, obtenerMenu, loadMenu, initializeMenu, obtenerExtrasProductos, buscarProductoPorNombre } from './menu-store.js'
+import { setUmasushiZonasCache, obtenerZonasDelivery, obtenerExtrasStored, calcularExtrasMonto, obtenerSubtotalProductos, obtenerTotalPedidoNumerico, extrasLineItems, construirMensajeWhatsApp } from './order-shared.js'
+import { calculateDelivery } from './delivery-calc.js'
+import { searchAddressCoordinates, reverseGeocodeCoords, initLeafletMap, createLeafletCircle } from './maps-osm.js'
 var DEFAULT_SLUG = 'umai';
 var currentNegocio = null;
+window.currentNegocio = currentNegocio;
 
 function getSlugFromUrl() {
     try {
@@ -44,13 +55,9 @@ function propagarSlugEnLinks(slug) {
 async function resolverNegocioActual() {
     if (currentNegocio) return currentNegocio;
     const slug = getSlugFromUrl();
-    if (typeof obtenerNegocioPorSlug !== 'function') {
-        console.warn('[app] negocios.service no cargado, sigo sin negocio');
-        return null;
-    }
     // Esperar a Supabase ready
     let intentos = 0;
-    while ((typeof isSupabaseReady !== 'function' || !isSupabaseReady()) && intentos < 30) {
+    while (!isSupabaseReady() && intentos < 30) {
         await new Promise(r => setTimeout(r, 100));
         intentos++;
     }
@@ -84,6 +91,20 @@ document.addEventListener('DOMContentLoaded', async function () {
     // 3. Zonas del negocio    → umasushiZonasCache (order-shared.js)
     console.log('[app] Inicializando carga de datos...');
     await resolverNegocioActual();
+    window.currentNegocio = currentNegocio;
+
+    const n = currentNegocio;
+    const nombreEl = document.getElementById('negocio-nombre');
+    if (nombreEl && n && n.nombre_negocio) nombreEl.textContent = n.nombre_negocio;
+    const footerTel = document.getElementById('footer-tel');
+    if (footerTel && n && n.telefono_negocio) footerTel.textContent = 'Telefono: +' + n.telefono_negocio;
+    if (n && n.telefono_negocio) {
+        const waFloat = document.getElementById('wa-float');
+        if (waFloat) {
+            waFloat.href = 'https://wa.me/' + n.telefono_negocio + '?text=Hola!%20Quiero%20hacer%20un%20pedido%20en%20' + encodeURIComponent(n.nombre_negocio || '') + '%20🍣';
+            waFloat.hidden = false;
+        }
+    }
 
     // Propagar el slug a links internos de /u/* para que la navegación
     // mantenga el negocio activo (workaround sin rewrites de Vercel).
@@ -93,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     await Promise.all([
         cargarProductosConSupabase(),
-        typeof cargarZonasConSupabase === 'function' ? cargarZonasConSupabase() : Promise.resolve()
+        cargarZonasConSupabase()
     ]);
 
     if (window.location.pathname.includes('pedido.html')) {
@@ -121,17 +142,10 @@ async function cargarZonasConSupabase() {
             console.warn('[app] Supabase no listo — zonas vacías');
             return;
         }
-        if (typeof obtenerZonas !== 'function') {
-            console.warn('[app] obtenerZonas no disponible');
-            return;
-        }
         const opts = currentNegocio ? { negocioId: currentNegocio.id } : {};
         const zonas = await obtenerZonas(opts);
-        if (typeof umasushiZonasCache !== 'undefined') {
-            // eslint-disable-next-line no-global-assign
-            umasushiZonasCache = Array.isArray(zonas) ? zonas.slice() : [];
-            console.log('[app] ✓ Zonas cargadas:', umasushiZonasCache.length);
-        }
+        setUmasushiZonasCache(zonas);
+        console.log('[app] ✓ Zonas cargadas:', (Array.isArray(zonas) ? zonas : []).length);
     } catch (e) {
         console.error('[app] Error cargando zonas:', e.message);
     }
@@ -156,10 +170,8 @@ async function cargarProductosConSupabase() {
             const productos = await obtenerProductos(opts);
 
             if (productos && productos.length > 0) {
-                if (typeof productosCache !== 'undefined') {
-                    productosCache = productos.slice();
-                    console.log('[app] ✓ Cache global actualizado:', productos.length, 'productos');
-                }
+                setProductosCache(productos);
+                console.log('[app] ✓ Cache global actualizado:', productos.length, 'productos');
                 
                 // NO guardar en localStorage (productos solo en Supabase)
                 console.log('[app] ✓ Productos cargados desde Supabase');
@@ -187,6 +199,7 @@ function toggleMenu() {
     if (hamburger) hamburger.classList.toggle('is-open', willOpen);
     document.body.classList.toggle('no-scroll', willOpen);
 }
+window.toggleMenu = toggleMenu;
 
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
@@ -313,25 +326,21 @@ function generateGoogleMapsUrl(coords) {
 }
 
 function calculateDeliveryCompat(zonas) {
-    // Solo usar calculateDelivery con coords obligatorias
     var coords = getDeliveryCoordsStored();
-    if (coords && typeof calculateDelivery === 'function') {
-        var res = calculateDelivery(coords, zonas);
-        return {
-            coincide: res.ok,
-            nombre: res.ok ? res.zone.nombre : '',
-            envio: res.ok ? res.costoEnvio : 0,
-            mode: 'circle',
-            distanceM: res.distanceM,
-            reason: res.reason
-        };
+    if (!coords) return { coincide: false, nombre: '', envio: 0, mode: 'circle', reason: 'no_coords' }
+    var res = calculateDelivery(coords, zonas);
+    return {
+        coincide: res.ok,
+        nombre: res.ok ? res.zone.nombre : '',
+        envio: res.ok ? res.costoEnvio : 0,
+        mode: 'circle',
+        distanceM: res.distanceM,
+        reason: res.reason
     }
-    return { coincide: false, nombre: '', envio: 0, mode: 'circle', reason: 'no_coords' };
 }
 
 function menuByName(nombreProducto) {
-    if (typeof buscarProductoPorNombre === 'function') return buscarProductoPorNombre(nombreProducto);
-    return null;
+    return buscarProductoPorNombre(nombreProducto);
 }
 function umasushiEscapeHtml(text = "") {
     return String(text)
@@ -344,13 +353,10 @@ function umasushiEscapeHtml(text = "") {
 function renderMenu() {
     const host = getEl('menu-dynamic');
     if (!host) return;
-    if (typeof initializeMenu === 'function') initializeMenu();
+    initializeMenu();
 
-    // Productos del menú principal: excluir extras (es_extra=true).
-    // Los extras se muestran solo en la sección Extras del formulario de pedido.
-    const menuCompleto = typeof loadMenu === 'function' ? loadMenu() : typeof obtenerMenu === 'function' ? obtenerMenu() : [];
+    const menuCompleto = loadMenu();
     const menu = menuCompleto.filter(p => !p.es_extra);
-    const cats = typeof UMASUSHI_MENU_CATEGORIAS !== 'undefined' ? UMASUSHI_MENU_CATEGORIAS : [];
 
     function cardHtml(p) {
         const nombre = p.nombre || '';
@@ -392,7 +398,7 @@ function renderMenu() {
         byCat[c].push(p);
     });
 
-    const catList = cats.length ? cats : Object.keys(byCat);
+    const catList = Object.keys(byCat);
     const categoriasConProductos = catList.filter(cat => (byCat[cat] || []).length > 0);
 
     // Renderizar navegación de tabs horizontal
@@ -412,9 +418,10 @@ function renderMenu() {
         const items = byCat[cat] || [];
         if (!items.length) return '';
         const sectionId = 'menu-section-' + umasushiEscapeHtml(cat).toLowerCase().replace(/\s+/g, '-');
+        const sufijo = cat === 'Productos' ? ' — 4 piezas' : cat === 'Tablas' ? ' — 20 piezas' : '';
         return `
           <div class="menu-section" id="${sectionId}">
-            <h3>${umasushiEscapeHtml(cat)}</h3>
+            <h3>${umasushiEscapeHtml(cat)}${sufijo}</h3>
             <div class="products-grid">
               ${items.map(cardHtml).join('')}
             </div>
@@ -626,12 +633,12 @@ function getEntregaActiva() {
 
 function actualizarTotal() {
     const pedido = obtenerPedido();
-    const subProd = typeof obtenerSubtotalProductos === 'function' ? obtenerSubtotalProductos(pedido) : calcularTotalSoloProductos(pedido);
+    const subProd = obtenerSubtotalProductos(pedido);
 
-    const extrasMap = typeof obtenerExtrasStored === 'function' ? obtenerExtrasStored() : {};
-    const extrasLines = typeof extrasLineItems === 'function' ? extrasLineItems(extrasMap) : [];
+    const extrasMap = obtenerExtrasStored();
+    const extrasLines = extrasLineItems(extrasMap);
 
-    const montoExtras = typeof calcularExtrasMonto === 'function' ? calcularExtrasMonto(extrasMap) : 0;
+    const montoExtras = calcularExtrasMonto(extrasMap);
     const entregaActual = getEntregaActiva();
     const zonasLista = obtenerZonasDelivery();
     const envioDet = calculateDeliveryCompat(zonasLista);
@@ -703,7 +710,7 @@ function renderExtrasDinamicos() {
     const empty = getEl('extras-empty');
     if (!host) return;
 
-    const extrasProductos = typeof obtenerExtrasProductos === 'function' ? obtenerExtrasProductos() : [];
+    const extrasProductos = obtenerExtrasProductos();
     if (!extrasProductos.length) {
         host.innerHTML = '';
         if (empty) empty.hidden = false;
@@ -919,11 +926,11 @@ function saveDeliveryLocation() {
     var input = getEl('direccion-input');
     var addressText = input ? input.value.trim() : '';
 
-    if (!addressText && typeof reverseGeocodeCoords === 'function') {
+    if (!addressText) {
         reverseGeocodeCoords({ lat: position.lat, lng: position.lng })
             .then(function (result) {
-                if (input) {
-                    input.value = result.display_name;
+                if (input && result.address_text) {
+                    input.value = result.address_text;
                 }
                 setDeliveryMarker(result.coords, true);
                 updateDeliveryStatusText('Ubicación guardada. Revisa tu pedido.');
@@ -1276,7 +1283,7 @@ function confirmarPedido() {
 
     // Extras: estado en vivo (map) + snapshot congelado para guardar
     const extrasMap = obtenerExtrasStored();
-    const extrasSnapshot = typeof extrasLineItems === 'function' ? extrasLineItems(extrasMap) : [];
+    const extrasSnapshot = extrasLineItems(extrasMap);
     let ubicacionLink = '';
     let direccionTexto = '';
 

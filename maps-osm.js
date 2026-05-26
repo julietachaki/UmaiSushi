@@ -1,14 +1,6 @@
-/**
- * OpenStreetMap + Nominatim + Leaflet Integration
- * - Autocomplete de direcciones con Nominatim (100% gratis, sin API key)
- * - Generación de URLs de Google Maps (sin API key, solo coords)
- * - Lógica para mapas interactivos con Leaflet
- */
+import { umasushiEscapeHtml } from './order-shared.js'
+import L from 'leaflet'
 
-/**
- * Generar URL pública de OpenStreetMap a partir de coordenadas
- * NO requiere API key - es solo una URL de búsqueda pública
- */
 function generateGoogleMapsUrl(coords) {
     if (!coords || typeof coords !== 'object') return '';
     const lat = Number(coords.lat);
@@ -108,10 +100,6 @@ function reverseGeocodeCoords(coords, previousText) {
     });
 }
 
-/**
- * Nominatim Autocomplete para direcciones
- * Busca en OpenStreetMap sin necesidad de API key
- */
 function initNominatimAutocomplete(inputEl, listEl, onSelect) {
     console.log('[nominatim] Inicializando autocomplete');
 
@@ -139,7 +127,6 @@ function initNominatimAutocomplete(inputEl, listEl, onSelect) {
         listEl.innerHTML = html;
         listEl.hidden = false;
 
-        // Listeners para items
         listEl.querySelectorAll('.autocomplete-item').forEach((item) => {
             item.addEventListener('click', function () {
                 const idx = parseInt(this.dataset.idx, 10);
@@ -197,12 +184,10 @@ function initNominatimAutocomplete(inputEl, listEl, onSelect) {
             return;
         }
 
-        // Abortar request anterior si existe
         if (currentRequest) {
             currentRequest.abort();
         }
 
-        // Búsqueda siempre en San Rafael, Mendoza, Argentina
         const searchQuery = `${query.trim()}, San Rafael, Mendoza, Argentina`;
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=jsonv2&limit=5&countrycodes=ar`;
 
@@ -226,13 +211,11 @@ function initNominatimAutocomplete(inputEl, listEl, onSelect) {
             });
     }
 
-    // Input listener
     inputEl.addEventListener('input', function () {
         const query = this.value.trim();
         performSearch(query);
     });
 
-    // Keyboard navigation
     inputEl.addEventListener('keydown', function (e) {
         if (listEl.hidden || !suggestions.length) return;
 
@@ -252,7 +235,6 @@ function initNominatimAutocomplete(inputEl, listEl, onSelect) {
         }
     });
 
-    // Click fuera cierra lista
     document.addEventListener('click', function (e) {
         if (e.target !== inputEl && e.target !== listEl && !listEl.contains(e.target)) {
             listEl.hidden = true;
@@ -262,16 +244,7 @@ function initNominatimAutocomplete(inputEl, listEl, onSelect) {
     console.log('[nominatim] Autocomplete listo');
 }
 
-/**
- * Inicializar mapa Leaflet para admin
- * Retorna instancia de mapa
- */
 function initLeafletMap(mapElementId, initialCenter = { lat: -34.6177, lng: -68.3301 }, zoom = 13) {
-    if (!window.L) {
-        console.error('[leaflet] Leaflet.js no cargado');
-        return null;
-    }
-
     const mapEl = document.getElementById(mapElementId);
     if (!mapEl) {
         console.error('[leaflet] Elemento del mapa no encontrado:', mapElementId);
@@ -280,7 +253,6 @@ function initLeafletMap(mapElementId, initialCenter = { lat: -34.6177, lng: -68.
 
     const map = L.map(mapEl).setView([initialCenter.lat, initialCenter.lng], zoom);
 
-    // OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19
@@ -290,9 +262,6 @@ function initLeafletMap(mapElementId, initialCenter = { lat: -34.6177, lng: -68.
     return map;
 }
 
-/**
- * Crear marcador en mapa Leaflet
- */
 function createLeafletMarker(map, coords, label = '') {
     if (!map || !coords) return null;
 
@@ -307,9 +276,6 @@ function createLeafletMarker(map, coords, label = '') {
     return marker;
 }
 
-/**
- * Crear círculo en mapa Leaflet
- */
 function createLeafletCircle(map, center, radiusMeters, options = {}) {
     if (!map || !center) return null;
 
@@ -329,9 +295,6 @@ function createLeafletCircle(map, center, radiusMeters, options = {}) {
     return circle;
 }
 
-/**
- * Calcular distancia Haversine entre dos puntos (en metros)
- */
 function haversineDistance(coord1, coord2) {
     const lat1 = parseFloat(coord1.lat);
     const lon1 = parseFloat(coord1.lng);
@@ -342,7 +305,7 @@ function haversineDistance(coord1, coord2) {
         return null;
     }
 
-    const R = 6371000; // Tierra en metros
+    const R = 6371000;
     const toRad = (deg) => (deg * Math.PI) / 180;
 
     const dLat = toRad(lat2 - lat1);
@@ -353,4 +316,13 @@ function haversineDistance(coord1, coord2) {
     return R * c;
 }
 
-console.log('[osm] OpenStreetMap + Nominatim + Leaflet módulo cargado');
+export {
+    generateGoogleMapsUrl,
+    searchAddressCoordinates,
+    reverseGeocodeCoords,
+    initNominatimAutocomplete,
+    initLeafletMap,
+    createLeafletMarker,
+    createLeafletCircle,
+    haversineDistance
+}

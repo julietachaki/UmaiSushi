@@ -102,46 +102,7 @@
         <a href="pedido.html" class="btn-sticky">Ver mi pedido</a>
     </div>
 
-    <!-- CONFIG (debe ir antes que todo) -->
     <script src="/config.js"></script>
-
-    <!-- SUPABASE & SERVICIOS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/services/supabase.js"></script>
-    <script src="/services/productos.service.js"></script>
-    <script src="/services/pedidos.service.js"></script>
-    <script src="/services/zonas.service.js"></script>
-    <script src="/services/negocios.service.js"></script>
-    <script src="/services/sheets.service.js"></script>
-
-    <!-- SCRIPTS ORIGINALES -->
-    <script src="/menu-store.js?v=20260515c"></script>
-    <script src="/script.js?v=20260515c"></script>
-
-    <!-- Personalización por negocio (nombre/teléfono en hero+footer+WA float) -->
-    <script>
-        (async () => {
-            // Esperar a que script.js resuelva el negocio
-            let intentos = 0;
-            while ((!window.currentNegocio) && intentos < 100) {
-                await new Promise(r => setTimeout(r, 50));
-                intentos++;
-            }
-            const n = window.currentNegocio;
-            if (!n) return;
-            const nombreEl = document.getElementById('negocio-nombre');
-            if (nombreEl && n.nombre_negocio) nombreEl.textContent = n.nombre_negocio;
-            const footerTel = document.getElementById('footer-tel');
-            if (footerTel && n.telefono_negocio) footerTel.textContent = 'Telefono: +' + n.telefono_negocio;
-            // WhatsApp float
-            if (n.telefono_negocio) {
-                const waFloat = document.getElementById('wa-float');
-                if (waFloat) {
-                    waFloat.href = `https://wa.me/${n.telefono_negocio}?text=Hola!%20Quiero%20hacer%20un%20pedido%20en%20${encodeURIComponent(n.nombre_negocio || '')}%20🍣`;
-                    waFloat.hidden = false;
-                }
-            }
-        })();
-    </script>
+    <script type="module" src="/src/pages/u-index.js"></script>
 </body>
 </html>

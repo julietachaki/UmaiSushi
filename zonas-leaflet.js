@@ -1,10 +1,7 @@
-/**
- * Admin Zonas de Entrega (Leaflet + OpenStreetMap)
- * - Mapa interactivo para seleccionar centros
- * - Radio dinámico
- * - Guardar en localStorage
- * NO depende de Google Maps
- */
+import { umasushiEscapeHtml } from './order-shared.js'
+import L from 'leaflet'
+import { initNominatimAutocomplete } from './maps-osm.js'
+import { guardarZonas } from './services/zonas.service.js'
 
 function zonasNormalize(zonas) {
     var zs = Array.isArray(zonas) ? zonas : [];
@@ -47,7 +44,7 @@ function zonasRowHtmlCircle(z) {
     </tr>`;
 }
 
-function zonasTableHtmlCircle(zonas) {
+export function zonasTableHtmlCircle(zonas) {
     var zs = zonasNormalize(zonas);
     var body = zs.map(zonasRowHtmlCircle).join('');
     if (!body) body = '<tr class="muted"><td colspan="4">Sin zonas. Agregá al menos una.</td></tr>';
@@ -91,7 +88,7 @@ function zonasTableHtmlCircle(zonas) {
     </section>`;
 }
 
-function configurarZonasCircleAdmin(container) {
+export function configurarZonasCircleAdmin(container) {
     console.log('[leaflet-admin] configurarZonasCircleAdmin iniciado');
     var tbody = container.querySelector('#zonas-tbody');
     var modal = container.querySelector('#zonas-modal');
@@ -140,15 +137,9 @@ function configurarZonasCircleAdmin(container) {
     function ensureMap() {
         if (leafletMap) return Promise.resolve(leafletMap);
 
-        if (!window.L) {
-            return Promise.reject(new Error('Leaflet.js no cargado'));
-        }
-
-        // Inicializar mapa Leaflet
         try {
             leafletMap = L.map(mapEl).setView([-34.6177, -68.3301], 13);
 
-            // OpenStreetMap tiles
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 19
@@ -157,7 +148,6 @@ function configurarZonasCircleAdmin(container) {
             marker = L.marker([-34.6177, -68.3301]);
             marker.addTo(leafletMap);
 
-            // Click en mapa para seleccionar centro
             leafletMap.on('click', function (e) {
                 if (!editingTr) return;
                 var lat = e.latlng.lat;
@@ -165,7 +155,6 @@ function configurarZonasCircleAdmin(container) {
                 marker.setLatLng([lat, lng]);
                 leafletMap.setView([lat, lng], leafletMap.getZoom());
 
-                // Actualizar circle
                 if (circle) {
                     leafletMap.removeLayer(circle);
                 }
@@ -187,8 +176,7 @@ function configurarZonasCircleAdmin(container) {
                 console.log('[leaflet-admin] Centro actualizado:', lat, lng);
             });
 
-            // Search con Nominatim
-            if (searchInput && typeof initNominatimAutocomplete === 'function') {
+            if (searchInput) {
                 initNominatimAutocomplete(searchInput, searchResults, function (sel) {
                     if (!sel || !sel.coords) return;
                     var lat = sel.coords.lat;
@@ -236,7 +224,6 @@ function configurarZonasCircleAdmin(container) {
                         leafletMap.setView([lat, lng], leafletMap.getZoom());
                         marker.setLatLng([lat, lng]);
 
-                        // Mostrar circle
                         var radiusKm = Number(editingTr.querySelector('.zona-radius')?.value) || 1.5;
                         var radiusM = radiusKm * 1000;
                         if (circle) leafletMap.removeLayer(circle);
@@ -251,7 +238,6 @@ function configurarZonasCircleAdmin(container) {
                         marker.setLatLng([-34.6177, -68.3301]);
                     }
 
-                    // Redibujar mapa
                     setTimeout(function () {
                         leafletMap.invalidateSize();
                     }, 100);
@@ -263,9 +249,8 @@ function configurarZonasCircleAdmin(container) {
         }
     });
 
-    // Listener para cambios en radio
     tbody.addEventListener('change', function (e) {
-        if (e.target.classList.contains('zona-radius') && editingTr && leafletMap && typeof L !== 'undefined') {
+        if (e.target.classList.contains('zona-radius') && editingTr && leafletMap) {
             var lat = Number(editingTr.dataset.centerLat);
             var lng = Number(editingTr.dataset.centerLng);
             if (isFinite(lat) && isFinite(lng)) {
@@ -343,18 +328,11 @@ function configurarZonasCircleAdmin(container) {
             return;
         }
 
-        if (typeof guardarZonas !== 'function') {
-            showFb('Servicio Supabase no disponible.', false);
-            return;
-        }
-
         btn.disabled = true;
         var labelOriginal = btn.textContent;
         btn.textContent = 'Guardando…';
         try {
-            // Multi-tenant: las páginas que mostrán este admin setean
-            // window.CURRENT_NEGOCIO_ID antes de invocar. Sin él, fallback legacy.
-            var negocioId = (typeof window !== 'undefined' && window.CURRENT_NEGOCIO_ID) || undefined;
+            var negocioId = window.CURRENT_NEGOCIO_ID || undefined;
             var resultado = await guardarZonas(zonas, negocioId);
             if (!resultado) {
                 showFb('No se pudo guardar (Supabase). Revisá la consola.', false);
@@ -362,7 +340,6 @@ function configurarZonasCircleAdmin(container) {
             }
             console.log('[leaflet-admin] ✓ Zonas guardadas en Supabase:', resultado);
             showFb('Zonas guardadas (' + resultado.length + ').', true);
-            // Re-pintar tabla con los IDs UUID asignados por Postgres
             tbody.innerHTML = resultado.map(zonasRowHtmlCircle).join('');
             tbody.querySelectorAll('tr').forEach(function (tr, idx) {
                 var z = resultado[idx];
@@ -383,17 +360,12 @@ function configurarZonasCircleAdmin(container) {
     container.querySelector('#zona-ejemplo').addEventListener('click', async function () {
         var ejemplo = [
             {
-                // Sin id → Postgres genera UUID
                 nombre: 'Centro',
                 envio: 1500,
                 center: { lat: -34.6177, lng: -68.3301 },
                 radiusM: 1800
             }
         ];
-        if (typeof guardarZonas !== 'function') {
-            showFb('Servicio Supabase no disponible.', false);
-            return;
-        }
         try {
             var resultado = await guardarZonas(ejemplo);
             if (!resultado) {
@@ -415,7 +387,6 @@ function configurarZonasCircleAdmin(container) {
         }
     });
 
-    // Bootstrap datasets
     tbody.querySelectorAll('tr[data-zone-id]').forEach(function (tr) {
         var centerTxt = tr.querySelector('.zona-center')?.value || '';
         var parts = centerTxt.split(',').map(function (x) {
@@ -429,5 +400,3 @@ function configurarZonasCircleAdmin(container) {
 
     console.log('[leaflet-admin] UI Configurada');
 }
-
-console.log('[zonas-leaflet] Zonas admin con Leaflet módulo cargado');

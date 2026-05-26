@@ -46,60 +46,6 @@
     </div>
 
     <script src="/config.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/services/supabase.js"></script>
-    <script src="/services/auth.service.js"></script>
-    <script src="/services/negocios.service.js"></script>
-    <script src="/services/zonas.service.js"></script>
-    <script src="/shared/auth-guard.js"></script>
-    <script src="/shared/dashboard-shell.js"></script>
-    <!-- Util compartida: umasushiEscapeHtml -->
-    <script src="/order-shared.js"></script>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="/maps-osm.js"></script>
-    <script src="/zonas-leaflet.js"></script>
-
-    <script>
-        (async () => {
-            const host = document.getElementById('zonas-host');
-            function showError(msg) {
-                if (host) host.innerHTML = `<div class="dash-error">${msg}</div>`;
-                console.error('[zonas-page]', msg);
-            }
-            try {
-                const ctx = await bootstrapDashPage('zonas');
-                if (!ctx) return; // redirect en curso
-                const { negocio } = ctx;
-                if (!negocio) {
-                    showError('No se encontró un negocio asociado a tu cuenta.');
-                    return;
-                }
-                window.CURRENT_NEGOCIO_ID = negocio.id;
-
-                if (typeof obtenerZonas !== 'function') {
-                    showError('Servicio de zonas no disponible (zonas.service.js no cargó).');
-                    return;
-                }
-                if (typeof zonasTableHtmlCircle !== 'function') {
-                    showError('zonas-leaflet.js no cargó. Verificá que el script esté incluido.');
-                    return;
-                }
-
-                const zonas = await obtenerZonas({ negocioId: negocio.id });
-                console.log('[zonas-page] cargadas', zonas.length, 'zonas');
-
-                host.innerHTML = zonasTableHtmlCircle(zonas);
-
-                if (typeof configurarZonasCircleAdmin === 'function') {
-                    configurarZonasCircleAdmin(host);
-                } else {
-                    console.warn('[zonas-page] configurarZonasCircleAdmin no disponible');
-                }
-            } catch (e) {
-                console.error('[zonas-page] error:', e);
-                showError('Error inesperado: ' + (e?.message || e));
-            }
-        })();
-    </script>
+    <script type="module" src="/src/pages/dashboard-zonas.js"></script>
 </body>
 </html>

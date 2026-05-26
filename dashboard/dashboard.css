@@ -5,6 +5,8 @@
    - Tipografía Bristol / MoreSugar / Julius Sans One
    - Paleta verde --color-primary #0f490f */
 
+@import url('https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap');
+
 @font-face {
     font-family: 'Bristol';
     src: url('/fonts/Bristol.otf') format('opentype');
@@ -13,7 +15,6 @@
     font-family: 'MoreSugar';
     src: url('/fonts/MoreSugar-Regular.otf') format('opentype');
 }
-@import url('https://fonts.googleapis.com/css2?family=Julius+Sans+One&display=swap');
 
 :root {
     --color-primary: #0f490f;

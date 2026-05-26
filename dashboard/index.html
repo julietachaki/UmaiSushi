@@ -71,38 +71,6 @@
     </div>
 
     <script src="/config.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/services/supabase.js"></script>
-    <script src="/services/auth.service.js"></script>
-    <script src="/services/negocios.service.js"></script>
-    <script src="/shared/auth-guard.js"></script>
-    <script src="/shared/dashboard-shell.js"></script>
-
-    <script>
-        (async () => {
-            const ctx = await bootstrapDashPage('inicio');
-            if (!ctx) return;
-
-            const { negocio } = ctx;
-
-            document.getElementById('dash-fecha').textContent = new Date().toLocaleDateString('es-AR', {
-                weekday: 'long',
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            });
-
-            if (!negocio) {
-                document.getElementById('dash-error-container').innerHTML = `<div class="dash-error">
-                    No se encontró un negocio asociado a tu cuenta. Contactá al administrador.
-                </div>`;
-                return;
-            }
-            document.getElementById('negocio-nombre').textContent = negocio.nombre_negocio || '—';
-            document.getElementById('negocio-slug').textContent = negocio.slug || '—';
-            document.getElementById('negocio-telefono').textContent = negocio.telefono_negocio || '—';
-            document.getElementById('link-catalogo').href = `/u/?slug=${encodeURIComponent(negocio.slug)}`;
-        })();
-    </script>
+    <script type="module" src="/src/pages/dashboard-index.js"></script>
 </body>
 </html>

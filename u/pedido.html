@@ -65,6 +65,7 @@
                     </div>
 
                     <div class="extras-block">
+                        <p class="extras-notice">Todos los pedidos vienen con un dip de soja y uno de teriyaki.</p>
                         <p class="extras-title">¿Querés agregar extras?</p>
                         <div id="extras-dynamic"></div>
                         <p class="extras-empty muted small" id="extras-empty" hidden>
@@ -151,46 +152,6 @@
 
     <!-- CONFIG primero -->
     <script src="/config.js"></script>
-
-    <!-- SUPABASE & SERVICIOS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/services/supabase.js"></script>
-    <script src="/services/productos.service.js"></script>
-    <script src="/services/pedidos.service.js"></script>
-    <script src="/services/zonas.service.js"></script>
-    <script src="/services/negocios.service.js"></script>
-    <script src="/services/sheets.service.js"></script>
-
-    <!-- SCRIPTS ORIGINALES -->
-    <script src="/order-shared.js?v=20260515c"></script>
-    <script src="/menu-store.js?v=20260515c"></script>
-    <script src="/delivery-calc.js"></script>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="/maps-osm.js"></script>
-    <script src="/script.js?v=20260515c"></script>
-
-    <script>
-        // Personalización por negocio: logo, footer, WA float
-        (async () => {
-            let intentos = 0;
-            while ((!window.currentNegocio) && intentos < 100) {
-                await new Promise(r => setTimeout(r, 50));
-                intentos++;
-            }
-            const n = window.currentNegocio;
-            if (!n) return;
-            const logo = document.getElementById('logo-link');
-            if (logo && n.nombre_negocio) logo.textContent = n.nombre_negocio;
-            const footerTel = document.getElementById('footer-tel');
-            if (footerTel && n.telefono_negocio) footerTel.textContent = 'Telefono: +' + n.telefono_negocio;
-            if (n.telefono_negocio) {
-                const waFloat = document.getElementById('wa-float');
-                if (waFloat) {
-                    waFloat.href = `https://wa.me/${n.telefono_negocio}?text=Hola!%20Quiero%20hacer%20un%20pedido%20en%20${encodeURIComponent(n.nombre_negocio || '')}%20🍣`;
-                    waFloat.hidden = false;
-                }
-            }
-        })();
-    </script>
+    <script type="module" src="/src/pages/u-pedido.js"></script>
 </body>
 </html>
