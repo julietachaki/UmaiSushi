@@ -16,8 +16,7 @@ export default defineConfig({
         'dashboard-pedidos': resolve(__dirname, 'dashboard/pedidos.html'),
         'dashboard-zonas': resolve(__dirname, 'dashboard/zonas.html'),
         'dashboard-config': resolve(__dirname, 'dashboard/configuracion.html'),
-        login: resolve(__dirname, 'login/index.html'),
-        'root': resolve(__dirname, 'index.html')
+        login: resolve(__dirname, 'login/index.html')
       }
     }
   }

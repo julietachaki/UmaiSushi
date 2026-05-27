@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Propagar el slug a links internos de /u/* para que la navegación
     // mantenga el negocio activo (workaround sin rewrites de Vercel).
-    if (location.pathname.startsWith('/u/') && currentNegocio && currentNegocio.slug) {
+    if (currentNegocio && currentNegocio.slug) {
         propagarSlugEnLinks(currentNegocio.slug);
     }
 
@@ -1359,7 +1359,7 @@ function confirmarPedido() {
             // ===== REDIRECCIÓN al catálogo del negocio =====
             const homeUrl = location.pathname.startsWith('/u/')
                 ? `/u/${encodeURIComponent(slug)}/`
-                : 'index.html';
+                : '/';
             window.location.href = homeUrl;
         })
         .catch(function(err) {
