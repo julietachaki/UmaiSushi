@@ -36,7 +36,7 @@ function getRedirectTarget() {
     const params = new URLSearchParams(location.search);
     const r = params.get('redirect');
     if (r && r.startsWith('/') && !r.startsWith('//')) return r;
-    return '/dashboard/';
+    return '/dashboard/index.html';
 }
 
 async function checkSession() {

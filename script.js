@@ -1,8 +1,3 @@
-// ============================================================
-// Multi-tenant: el cliente público resuelve qué negocio carga
-// según el slug en la URL (path `/u/<slug>/...` o query `?slug=`).
-// Cuando no se especifica (legacy / paths viejos), default 'umai'.
-// ============================================================
 import { isSupabaseReady } from './services/supabase.js'
 import { obtenerProductos } from './services/productos.service.js'
 import { obtenerZonas } from './services/zonas.service.js'
@@ -20,41 +15,7 @@ var currentNegocio = null;
 window.currentNegocio = currentNegocio;
 
 function getSlugFromUrl() {
-    try {
-        // Prioridad 1: query string ?slug=... (camino actual sin rewrites de Vercel).
-        // Esto evita que /u/pedido.html?slug=umai resuelva el slug como
-        // 'pedido.html' por error.
-        var params = new URLSearchParams(location.search);
-        var fromQuery = params.get('slug');
-        if (fromQuery) return fromQuery;
-        // Prioridad 2: path /u/<slug>/... (cuando Vercel reescribe).
-        // Solo aceptamos como slug si NO tiene extensión (no es un .html).
-        var parts = location.pathname.split('/').filter(Boolean);
-        if (parts[0] === 'u' && parts[1] && parts[1].indexOf('.') === -1) return parts[1];
-    } catch (e) {}
     return DEFAULT_SLUG;
-}
-
-/**
- * Recorre los <a> de la página y añade `?slug=<slug>` a los que apuntan
- * a páginas internas del cliente público (index.html, pedido.html,
- * orden.html). Necesario en dev sin rewrites de Vercel.
- */
-function propagarSlugEnLinks(slug) {
-    document.querySelectorAll('a[href]').forEach(function (a) {
-        var href = a.getAttribute('href');
-        if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto:')) return;
-        var lastSegment = href.split('?')[0].split('#')[0].split('/').pop();
-        if (lastSegment === 'index.html') {
-            a.setAttribute('href', '/u/' + encodeURIComponent(slug) + '/');
-        } else if (lastSegment === 'pedido.html') {
-            a.setAttribute('href', '/u/' + encodeURIComponent(slug) + '/pedido');
-        } else if (lastSegment === 'orden.html') {
-            var params = new URLSearchParams(href.split('?')[1] || '');
-            params.set('slug', slug);
-            a.setAttribute('href', '/u/' + encodeURIComponent(slug) + '/orden?' + params.toString());
-        }
-    });
 }
 
 async function resolverNegocioActual() {
@@ -107,19 +68,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    // Propagar el slug a links internos de /u/* para que la navegación
-    // mantenga el negocio activo (workaround sin rewrites de Vercel).
-    if (currentNegocio && currentNegocio.slug) {
-        propagarSlugEnLinks(currentNegocio.slug);
-    }
-
     await Promise.all([
         cargarProductosConSupabase(),
         cargarZonasConSupabase()
     ]);
 
-    var _pp = window.location.pathname;
-    if (_pp.includes('pedido.html') || _pp.endsWith('/pedido')) {
+    if (window.location.pathname.includes('pedido.html')) {
         renderPedido();
         inicializarPedidoUI();
     } else {
@@ -1337,8 +1291,7 @@ function confirmarPedido() {
             // Apunta a /u/orden.html (vista read-only sin acciones admin).
             // El dueño abre /dashboard/pedidos para gestionar.
             const baseUrl = window.location.origin;
-            const slug = (currentNegocio && currentNegocio.slug) || DEFAULT_SLUG;
-            const linkPedido = `${baseUrl}/u/${encodeURIComponent(slug)}/orden?id=${pedidoGuardado.id}`;
+            const linkPedido = `${baseUrl}/u/orden.html?id=${pedidoGuardado.id}`;
 
             // ===== MENSAJE FINAL =====
             const mensajeFinal = construirMensajeWhatsApp({
@@ -1357,11 +1310,7 @@ function confirmarPedido() {
 
             window.open(urlWa, '_blank');
 
-            // ===== REDIRECCIÓN al catálogo del negocio =====
-            const homeUrl = location.pathname.startsWith('/u/')
-                ? `/u/${encodeURIComponent(slug)}/`
-                : '/';
-            window.location.href = homeUrl;
+            window.location.href = '/u/index.html';
         })
         .catch(function(err) {
             console.error('[confirmar] Error creando pedido:', err);

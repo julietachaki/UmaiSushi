@@ -22,5 +22,5 @@ import { bootstrapDashPage } from '../../shared/dashboard-shell.js'
     document.getElementById('negocio-nombre').textContent = negocio.nombre_negocio || '—';
     document.getElementById('negocio-slug').textContent = negocio.slug || '—';
     document.getElementById('negocio-telefono').textContent = negocio.telefono_negocio || '—';
-    document.getElementById('link-catalogo').href = `/u/${encodeURIComponent(negocio.slug)}/`;
+    document.getElementById('link-catalogo').href = '/u/index.html';
 })();

@@ -30,12 +30,11 @@ function getParam(name) {
     await waitForSupabase();
 
     const id = getParam('id');
-    const slug = getParam('slug') || 'umai';
     if (!id) { showError('Link inválido (falta id).'); return; }
 
     const [pedido, negocio] = await Promise.all([
         obtenerPedidoPorId(id),
-        obtenerNegocioPorSlug(slug)
+        obtenerNegocioPorSlug('umai')
     ]);
 
     if (!pedido) { showError('Pedido no encontrado. El link puede estar caducado.'); return; }
@@ -111,5 +110,5 @@ function getParam(name) {
         document.getElementById('orden-maps-link').href = pedido.maps_url;
     }
 
-    document.getElementById('back-link').href = `/u/${encodeURIComponent(slug)}/`;
+    document.getElementById('back-link').href = '/u/index.html';
 })()

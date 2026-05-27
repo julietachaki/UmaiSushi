@@ -3,11 +3,11 @@ import { obtenerMiNegocio } from '../services/negocios.service.js'
 import { signOut, getCurrentSession } from '../services/auth.service.js'
 
 const DASH_NAV_ITEMS = [
-    { key: 'inicio',        label: 'Inicio',         href: '/dashboard/' },
-    { key: 'pedidos',       label: 'Pedidos',        href: '/dashboard/pedidos' },
-    { key: 'menu',          label: 'Menú',           href: '/dashboard/menu' },
-    { key: 'zonas',         label: 'Zonas',          href: '/dashboard/zonas' },
-    { key: 'configuracion', label: 'Configuración',  href: '/dashboard/configuracion' }
+    { key: 'inicio',        label: 'Inicio',         href: '/dashboard/index.html' },
+    { key: 'pedidos',       label: 'Pedidos',        href: '/dashboard/pedidos.html' },
+    { key: 'menu',          label: 'Menú',           href: '/dashboard/menu.html' },
+    { key: 'zonas',         label: 'Zonas',          href: '/dashboard/zonas.html' },
+    { key: 'configuracion', label: 'Configuración',  href: '/dashboard/configuracion.html' }
 ]
 
 function dashEscapeHtml(s) {
@@ -49,7 +49,7 @@ export function mountDashShell(opts = {}) {
         <header class="main-header">
             <div class="dash-container">
                 <div class="dash-logo">
-                    <a href="/dashboard/">${dashEscapeHtml(brandLabel)}</a>
+                    <a href="/dashboard/index.html">${dashEscapeHtml(brandLabel)}</a>
                 </div>
                 <nav class="dash-nav-desktop">${navDesktopHtml}</nav>
                 <div class="dash-user-menu">
