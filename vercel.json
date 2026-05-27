@@ -4,11 +4,11 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "rewrites": [
+    { "source": "/", "destination": "/u/umai/" },
+    { "source": "/orden", "destination": "/u/orden.html" },
     { "source": "/u/:slug", "destination": "/u/index.html" },
     { "source": "/u/:slug/pedido", "destination": "/u/pedido.html?slug=:slug" },
-    { "source": "/u/:slug/orden", "destination": "/u/orden.html?slug=:slug" },
-    { "source": "/dashboard/", "destination": "/dashboard/index.html" },
-    { "source": "/login/", "destination": "/login/index.html" }
+    { "source": "/u/:slug/orden", "destination": "/u/orden.html?slug=:slug" }
   ],
   "redirects": [
     {
