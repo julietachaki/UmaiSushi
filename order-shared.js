@@ -234,14 +234,14 @@ export function construirMensajeWhatsApp(params) {
     lineas.push('Entrega: ' + entrega)
     lineas.push('')
     lineas.push('Fecha y hora del pedido: ' + fechaHora)
-    if (entrega.indexOf('domicilio') !== -1) {
-        lineas.push('Dirección: ' + (ubicacionTxt || '—'))
-        lineas.push('Google Maps: ' + (ubicacionLink || '—'))
-    }
     if (params.linkPedido) {
         lineas.push('')
-        lineas.push('Ver detalle del pedido:')
+        lineas.push('🗒️ Ver detalle del pedido:')
         lineas.push(params.linkPedido)
+    }
+    if (entrega.indexOf('domicilio') !== -1) {
+        lineas.push('Dirección: ' + (ubicacionTxt || '—'))
+        lineas.push('📍 Google Maps: ' + (ubicacionLink || '—'))
     }
     if (params.indicaciones_cliente && params.indicaciones_cliente.trim() !== '') {
         lineas.push('')
