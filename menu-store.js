@@ -1,5 +1,6 @@
 import { obtenerProductos, guardarProducto, eliminarProductoDeSupabase } from './services/productos.service.js'
 import { isSupabaseReady } from './services/supabase.js'
+import placeholderImg from '/static/producto.jpeg'
 
 var UMASUSHI_MENU_CATEGORIAS = ['Productos', 'Tablas', 'Vinos']
 
@@ -45,7 +46,6 @@ function removeLegacyMenuStorageKeys() {
 }
 
 function defaultMenuSeed() {
-    var placeholder = '/static/producto.jpeg'
     return [
         {
             id: 'p-clasico',
@@ -175,7 +175,7 @@ function normalizeMenuItem(raw) {
     var descripcion = umasushiSafeText(raw && (raw.descripcion != null ? raw.descripcion : raw.desc))
     var precio = umasushiClampInt(raw && raw.precio, 0)
     var categoria = umasushiNormalizeCategory(raw && raw.categoria)
-    var imagen = umasushiSafeText(raw && raw.imagen) || '/static/producto.jpeg'
+    var imagen = umasushiSafeText(raw && raw.imagen) || placeholderImg
     var id = umasushiSafeText(raw && raw.id) || umasushiUid('p')
     var orden = umasushiClampInt(raw && raw.orden, 0)
 

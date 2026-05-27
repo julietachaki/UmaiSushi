@@ -8,11 +8,13 @@ import { obtenerProductos } from './services/productos.service.js'
 import { obtenerZonas } from './services/zonas.service.js'
 import { obtenerNegocioPorSlug } from './services/negocios.service.js'
 import { crearPedido } from './services/pedidos.service.js'
-import { enviarPedidoASheets, marcarPedidoSincronizado } from './services/sheets.service.js'
 import { setProductosCache, obtenerMenu, loadMenu, initializeMenu, obtenerExtrasProductos, buscarProductoPorNombre } from './menu-store.js'
 import { setUmasushiZonasCache, obtenerZonasDelivery, obtenerExtrasStored, calcularExtrasMonto, obtenerSubtotalProductos, obtenerTotalPedidoNumerico, extrasLineItems, construirMensajeWhatsApp } from './order-shared.js'
 import { calculateDelivery } from './delivery-calc.js'
 import { searchAddressCoordinates, reverseGeocodeCoords, initLeafletMap, createLeafletCircle } from './maps-osm.js'
+import glutenfreeImg from '/static/glutenfree.png'
+import veggiImg from '/static/veggi.png'
+import placeholderImg from '/static/producto.jpeg'
 var DEFAULT_SLUG = 'umai';
 var currentNegocio = null;
 window.currentNegocio = currentNegocio;
@@ -39,16 +41,19 @@ function getSlugFromUrl() {
  * orden.html). Necesario en dev sin rewrites de Vercel.
  */
 function propagarSlugEnLinks(slug) {
-    var sluggables = ['index.html', 'pedido.html', 'orden.html'];
     document.querySelectorAll('a[href]').forEach(function (a) {
         var href = a.getAttribute('href');
         if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto:')) return;
-        // Solo paths relativos del cliente (no /dashboard/, /login/, etc)
         var lastSegment = href.split('?')[0].split('/').pop();
-        if (sluggables.indexOf(lastSegment) === -1) return;
-        if (href.indexOf('slug=') !== -1) return;
-        var sep = href.indexOf('?') !== -1 ? '&' : '?';
-        a.setAttribute('href', href + sep + 'slug=' + encodeURIComponent(slug));
+        if (lastSegment === 'index.html') {
+            a.setAttribute('href', '/u/' + encodeURIComponent(slug) + '/');
+        } else if (lastSegment === 'pedido.html') {
+            a.setAttribute('href', '/u/' + encodeURIComponent(slug) + '/pedido');
+        } else if (lastSegment === 'orden.html') {
+            var params = new URLSearchParams(href.split('?')[1] || '');
+            params.set('slug', slug);
+            a.setAttribute('href', '/u/' + encodeURIComponent(slug) + '/orden?' + params.toString());
+        }
     });
 }
 
@@ -63,9 +68,6 @@ async function resolverNegocioActual() {
     }
     currentNegocio = await obtenerNegocioPorSlug(slug);
     if (!currentNegocio) {
-        console.warn('[app] No se encontró negocio para slug:', slug);
-    } else {
-        console.log('[app] ✓ Negocio actual:', currentNegocio.slug, currentNegocio.id);
     }
     return currentNegocio;
 }
@@ -89,7 +91,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     // 1. Resolver negocio por slug
     // 2. Productos del negocio → productosCache (menu-store.js)
     // 3. Zonas del negocio    → umasushiZonasCache (order-shared.js)
-    console.log('[app] Inicializando carga de datos...');
     await resolverNegocioActual();
     window.currentNegocio = currentNegocio;
 
@@ -139,13 +140,11 @@ async function cargarZonasConSupabase() {
             intentos++;
         }
         if (!isSupabaseReady()) {
-            console.warn('[app] Supabase no listo — zonas vacías');
             return;
         }
         const opts = currentNegocio ? { negocioId: currentNegocio.id } : {};
         const zonas = await obtenerZonas(opts);
         setUmasushiZonasCache(zonas);
-        console.log('[app] ✓ Zonas cargadas:', (Array.isArray(zonas) ? zonas : []).length);
     } catch (e) {
         console.error('[app] Error cargando zonas:', e.message);
     }
@@ -165,22 +164,14 @@ async function cargarProductosConSupabase() {
         }
         
         if (isSupabaseReady()) {
-            console.log('[app] Cargando productos desde Supabase...');
             const opts = currentNegocio ? { negocioId: currentNegocio.id } : {};
             const productos = await obtenerProductos(opts);
 
             if (productos && productos.length > 0) {
                 setProductosCache(productos);
-                console.log('[app] ✓ Cache global actualizado:', productos.length, 'productos');
                 
-                // NO guardar en localStorage (productos solo en Supabase)
-                console.log('[app] ✓ Productos cargados desde Supabase');
                 return;
-            } else {
-                console.warn('[app] No hay productos en Supabase');
             }
-        } else {
-            console.warn('[app] Supabase no está listo');
         }
     } catch (e) {
         console.error('[app] Error cargando productos:', e.message);
@@ -225,7 +216,6 @@ function obtenerPedido() {
             }))
             .filter(item => item.nombre && item.cantidad > 0);
     } catch (e) {
-        console.warn('[pedido] localStorage corrupto, reseteando:', e.message);
         try { localStorage.removeItem('pedido'); } catch (_) {}
         return [];
     }
@@ -362,9 +352,9 @@ function renderMenu() {
         const nombre = p.nombre || '';
         const precio = Number(p.precio) || 0;
         const desc = p.descripcion || '';
-        const img = p.imagen || '/static/producto.jpeg';
-        const gluten = p.tags && p.tags.glutenfree !== false ? '/static/glutenfree.png' : '';
-        const veg = p.tags && p.tags.veggi ? '/static/veggi.png' : '';
+        const img = p.imagen || placeholderImg;
+        const gluten = p.tags && p.tags.glutenfree !== false ? glutenfreeImg : '';
+        const veg = p.tags && p.tags.veggi ? veggiImg : '';
         return `
           <div class="product-card product-card--compact" data-product-id="${umasushiEscapeHtml(p.id)}" data-product-name="${umasushiEscapeHtml(nombre)}" data-product-price="${precio}">
             <div class="product-main">
@@ -505,7 +495,7 @@ function incrementarProducto(nombreProducto) {
             nombre: producto.nombre,
             precio: Number(producto.precio) || 0,
             desc: producto.descripcion || producto.desc || '',
-            imagen: producto.imagen || '/static/producto.jpeg',
+            imagen: producto.imagen || placeholderImg,
             categoria: producto.categoria || 'Productos',
             veggi: !!(producto.tags && producto.tags.veggi),
             cantidad: 1
@@ -594,7 +584,7 @@ function renderPedido() {
     pedido.forEach((item, idx) => {
         const itemEl = document.createElement('div');
         itemEl.className = 'pedido-item pedido-item-card';
-        const img = item.imagen || '/static/producto.jpeg';
+        const img = item.imagen || placeholderImg;
         itemEl.innerHTML = `
             <img src="${umasushiEscapeHtml(img)}" alt="${umasushiEscapeHtml(item.nombre)}">
             <div class="item-details">
@@ -844,10 +834,8 @@ function searchAddressAndCenterMap(query) {
     removeLS(LS_DELIVERY_GUARDADA);
     updateDeliveryStatusText('Buscando dirección...');
     setDeliveryError('');
-    console.log('[nominatim] Buscando dirección:', query);
 
     if (typeof searchAddressCoordinates !== 'function') {
-        console.error('[nominatim] searchAddressCoordinates no disponible');
         setDeliveryError('No se puede buscar la dirección en este momento.');
         return;
     }
@@ -863,10 +851,8 @@ function searchAddressAndCenterMap(query) {
             }
             setDeliveryMarker(result.coords, true);
             updateDeliveryStatusText('Dirección actualizada. Ajustá manualmente si hace falta y guardá ubicación.');
-            console.log('[nominatim] Dirección encontrada:', result.address_text, result.coords);
         })
         .catch(function (err) {
-            console.error('[nominatim] Error buscando dirección:', err);
             updateDeliveryStatusText('Tocá el mapa para marcar tu ubicación exacta.');
             setDeliveryError('No se encontró la dirección. Usa el mapa para marcar tu ubicación exacta.');
         });
@@ -1045,7 +1031,6 @@ function initDeliveryMap() {
 
     deliveryMap.on('click', function (e) {
         reverseGeocodeAndFillInput({ lat: e.latlng.lat, lng: e.latlng.lng });
-        console.log('[delivery-map] Click en mapa:', e.latlng.lat, e.latlng.lng);
     });
 
     var savedCoords = getDeliveryCoordsStored();
@@ -1089,7 +1074,6 @@ function initDeliveryMap() {
                 updateDeliveryStatusText('Tocá el mapa para marcar tu ubicación exacta.');
                 updateDeliveryZoneStatus('');
                 actualizarTotal();
-                console.log('[delivery-map] Texto modificado, invalidando selección');
             }
             debounceAddressSearch();
         });
@@ -1247,7 +1231,6 @@ function confirmarPedido() {
         const okSel = getLS(LS_DELIVERY_OK, null) === '1';
         const coords = getDeliveryCoordsStored();
         if (!okSel || !coords) {
-            console.log('[confirmar] Dirección no válida:', { okSel, coords });
             showError(errAddr, 'Seleccioná una dirección válida de Google Places.');
             getEl('ubicacion-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
@@ -1256,7 +1239,6 @@ function confirmarPedido() {
         const zonas = obtenerZonasDelivery();
         const det = calculateDeliveryCompat(zonas);
         if (!det.coincide) {
-            console.log('[confirmar] Fuera de zona:', det.reason);
             showError(errAddr, 'La dirección está fuera de las zonas de envío configuradas.');
             getEl('ubicacion-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
@@ -1299,7 +1281,6 @@ function confirmarPedido() {
         zonaCoincidio = det.coincide;
         zonaNombre = det.nombre;
         costoEnvio = det.coincide ? det.envio : 0;
-        console.log('[confirmar] Delivery:', { zonaNombre, costoEnvio, distanceM: det.distanceM, reason: det.reason });
     }
 
     const subProd = obtenerSubtotalProductos(pedido);
@@ -1346,34 +1327,6 @@ function confirmarPedido() {
                 return;
             }
 
-            console.log('[confirmar] Pedido guardado:', pedidoGuardado.id);
-            // ===== SYNC GOOGLE SHEETS (no bloqueante) =====
-            console.log('[sheets] currentNegocio:', currentNegocio);
-            
-            if (
-                currentNegocio &&
-                currentNegocio.google_sync_enabled &&
-                currentNegocio.google_apps_script_url &&
-                currentNegocio.google_apps_script_secret
-            ) {
-                console.log('[sheets] iniciando sync...');
-                enviarPedidoASheets(pedidoGuardado, currentNegocio)
-                    .then(function(result) {
-
-                        console.log('[sheets] resultado sync:', result);
-
-                        return marcarPedidoSincronizado(
-                            pedidoGuardado.id,
-                            result
-                        );
-
-                    })
-                    .catch(function(err) {
-
-                        console.error('[sheets] sync error:', err);
-
-                    });
-            }
             // ===== LIMPIAR CARRITO =====
             guardarPedido([]);
             removeLS(LS_EXTRAS);
@@ -1384,7 +1337,7 @@ function confirmarPedido() {
             // El dueño abre /dashboard/pedidos para gestionar.
             const baseUrl = window.location.origin;
             const slug = (currentNegocio && currentNegocio.slug) || DEFAULT_SLUG;
-            const linkPedido = `${baseUrl}/u/orden.html?slug=${encodeURIComponent(slug)}&id=${pedidoGuardado.id}`;
+            const linkPedido = `${baseUrl}/u/${encodeURIComponent(slug)}/orden?id=${pedidoGuardado.id}`;
 
             // ===== MENSAJE FINAL =====
             const mensajeFinal = construirMensajeWhatsApp({
@@ -1395,19 +1348,17 @@ function confirmarPedido() {
             });
 
             // ===== ABRIR WHATSAPP =====
-            // El número viene del negocio (cada negocio recibe pedidos en su propio WA).
-            // Fallback al hardcoded por compat — debería desaparecer cuando todos los
-            // negocios tengan telefono_negocio cargado.
-            const telefono = (currentNegocio && currentNegocio.telefono_negocio) ||
-                            (window.UMASUSHI_CONFIG && window.UMASUSHI_CONFIG.whatsappNumero) ||
-                            '542604539727';
-            const urlWa = `https://wa.me/${telefono}?text=${encodeURIComponent(mensajeFinal)}`;
+            if (!currentNegocio?.telefono_negocio) {
+                showError(errorFinal, 'El negocio no tiene un número de WhatsApp configurado. Contactá al administrador.');
+                return;
+            }
+            const urlWa = `https://wa.me/${currentNegocio.telefono_negocio}?text=${encodeURIComponent(mensajeFinal)}`;
 
             window.open(urlWa, '_blank');
 
             // ===== REDIRECCIÓN al catálogo del negocio =====
             const homeUrl = location.pathname.startsWith('/u/')
-                ? `/u/?slug=${encodeURIComponent(slug)}`
+                ? `/u/${encodeURIComponent(slug)}/`
                 : 'index.html';
             window.location.href = homeUrl;
         })

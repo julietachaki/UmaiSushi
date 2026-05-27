@@ -1,5 +1,6 @@
 import { bootstrapDashPage } from '../../shared/dashboard-shell.js'
 import { obtenerProductos, guardarProducto, eliminarProductoDeSupabase } from '../../services/productos.service.js'
+import placeholderImg from '/static/producto.jpeg'
 
 function escapeHtml(s) {
     return String(s == null ? '' : s)
@@ -41,7 +42,7 @@ function productoCardHtml(p) {
     if (p.tags?.glutenfree) tags.push('<span class="dash-menu-tag">Gluten free</span>');
     return `
         <div class="dash-menu-card" data-prod-id="${escapeHtml(p.id)}">
-            <img src="${escapeHtml(p.imagen || '/static/producto.jpeg')}" alt="">
+            <img src="${escapeHtml(p.imagen || placeholderImg)}" alt="">
             <div class="dash-menu-card-body">
                 <h4>${escapeHtml(p.nombre || '')}</h4>
                 <p class="dash-menu-card-desc">${escapeHtml(p.descripcion || '')}</p>
@@ -92,7 +93,7 @@ function openModal(producto) {
     document.getElementById('prod-veggi').checked = !!producto?.tags?.veggi;
     document.getElementById('prod-glutenfree').checked = producto?.tags ? !!producto.tags.glutenfree : true;
     document.getElementById('prod-es-extra').checked = !!producto?.es_extra;
-    document.getElementById('prod-imagen-preview').src = isEdit && producto.imagen ? producto.imagen : '/static/producto.jpeg';
+    document.getElementById('prod-imagen-preview').src = isEdit && producto.imagen ? producto.imagen : placeholderImg;
     document.getElementById('prod-imagen-file').value = '';
     modal.hidden = false;
 }
@@ -104,7 +105,7 @@ async function saveProducto() {
     const desc = document.getElementById('prod-desc').value.trim();
     const precio = Number(document.getElementById('prod-precio').value);
     const categoria = document.getElementById('prod-categoria').value;
-    const imagen = document.getElementById('prod-imagen-preview').src || '/static/producto.jpeg';
+    const imagen = document.getElementById('prod-imagen-preview').src || placeholderImg;
     const veggi = document.getElementById('prod-veggi').checked;
     const glutenfree = document.getElementById('prod-glutenfree').checked;
     const es_extra = document.getElementById('prod-es-extra').checked;

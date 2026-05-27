@@ -111,5 +111,5 @@ function getParam(name) {
         document.getElementById('orden-maps-link').href = pedido.maps_url;
     }
 
-    document.getElementById('back-link').href = `/u/?slug=${encodeURIComponent(slug)}`;
+    document.getElementById('back-link').href = `/u/${encodeURIComponent(slug)}/`;
 })()

@@ -70,15 +70,7 @@ export async function actualizarNegocio(id, updates) {
 
     const allowed = [
         'nombre_negocio',
-        'telefono_negocio',
-        'google_sheet_url',
-        'google_sheet_id',
-        'google_apps_script_url',
-        'google_apps_script_secret',
-        'google_sync_enabled',
-        'google_sync_status',
-        'google_last_sync_at',
-        'google_last_sync_error'
+        'telefono_negocio'
     ]
     const safe = {}
     for (const k of allowed) {

@@ -4,10 +4,10 @@ import { signOut, getCurrentSession } from '../services/auth.service.js'
 
 const DASH_NAV_ITEMS = [
     { key: 'inicio',        label: 'Inicio',         href: '/dashboard/' },
-    { key: 'pedidos',       label: 'Pedidos',        href: '/dashboard/pedidos.html' },
-    { key: 'menu',          label: 'Menú',           href: '/dashboard/menu.html' },
-    { key: 'zonas',         label: 'Zonas',          href: '/dashboard/zonas.html' },
-    { key: 'configuracion', label: 'Configuración',  href: '/dashboard/configuracion.html' }
+    { key: 'pedidos',       label: 'Pedidos',        href: '/dashboard/pedidos' },
+    { key: 'menu',          label: 'Menú',           href: '/dashboard/menu' },
+    { key: 'zonas',         label: 'Zonas',          href: '/dashboard/zonas' },
+    { key: 'configuracion', label: 'Configuración',  href: '/dashboard/configuracion' }
 ]
 
 function dashEscapeHtml(s) {

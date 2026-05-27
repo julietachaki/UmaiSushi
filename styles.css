@@ -152,6 +152,8 @@ section.fade-in {
     transform: translateY(0);
 }
 
+#hero,
+.hero,
 #cocina {
     opacity: 1;
     transform: none;
@@ -846,6 +848,8 @@ se reordena debajo del texto. */
     padding: 24px;
     border-radius: 12px;
 }
+
+
 
 .horarios h2 {
     text-align: center;

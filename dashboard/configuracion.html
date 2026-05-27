@@ -7,49 +7,6 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/dashboard/dashboard.css">
     <style>
-        .sync-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-left: 8px;
-        }
-        .sync-badge.disconnected { background: #ecf0f1; color: #555; }
-        .sync-badge.pending      { background: #fdebd0; color: #b9770e; }
-        .sync-badge.connected    { background: #e9f1d6; color: var(--color-primary); }
-        .sync-badge.error        { background: #fdf0ee; color: #c0392b; }
-
-        .sheets-section {
-            margin-top: 24px;
-            padding-top: 24px;
-            border-top: 1px solid var(--color-border);
-        }
-        .sheets-section h3 {
-            font-family: 'Julius Sans One', sans-serif;
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: var(--color-text);
-            margin: 0 0 4px;
-            padding: 0;
-            border-bottom: none;
-            display: flex;
-            align-items: center;
-        }
-        .sheets-section .sheets-desc {
-            font-size: 13px;
-            color: var(--color-desc);
-            margin: 0 0 18px;
-        }
-        .sheets-section .sheets-desc a {
-            color: var(--color-primary);
-            text-decoration: underline;
-        }
-        .input-error {
-            border-color: #c0392b !important;
-        }
         .input-help {
             font-size: 12px;
             color: var(--color-desc);
@@ -91,55 +48,6 @@
                         </p>
                     </div>
 
-                    <!-- ====== INTEGRACIÓN GOOGLE SHEETS ====== -->
-                    <div class="sheets-section">
-                        <h3>
-                            Integración Google Sheets
-                            <span class="sync-badge disconnected" id="sync-badge">desconectada</span>
-                        </h3>
-                        <p class="sheets-desc">
-                            Sincronizá tus pedidos automáticamente con una hoja de cálculo de Google.
-                            <br>
-                            <a href="/docs/SHEETS_SETUP.md" target="_blank">Ver paso a paso →</a>
-                        </p>
-
-                        <div class="dash-form-row">
-                            <label>URL del Google Sheet</label>
-                            <input type="url" id="cfg-sheet-url"
-                                   placeholder="https://docs.google.com/spreadsheets/d/...">
-                            <p class="input-help">
-                                Pegá la URL completa del Sheet. El sistema extrae el ID automáticamente.
-                            </p>
-                        </div>
-
-                        <div class="dash-form-row">
-                            <label>URL del Apps Script Web App</label>
-                            <input type="url" id="cfg-script-url"
-                                   placeholder="https://script.google.com/macros/s/.../exec">
-                            <p class="input-help">
-                                URL del Apps Script deployado como Web App. Es distinta del URL del Sheet.
-                            </p>
-                        </div>
-
-                        <div class="dash-form-row">
-                            <label>Token secreto (compartido con Apps Script)</label>
-                            <input type="text" id="cfg-script-secret"
-                                   placeholder="Generá una clave aleatoria">
-                            <p class="input-help">
-                                El Apps Script valida este token en cada POST. Generá uno random y pegalo
-                                también en el código del Apps Script.
-                            </p>
-                        </div>
-
-                        <div class="dash-form-row">
-                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                                <input type="checkbox" id="cfg-sync-enabled">
-                                Habilitar sincronización con Sheets
-                            </label>
-                        </div>
-
-                        <p class="input-help" id="last-sync-info" style="margin-top:8px;"></p>
-                    </div>
 
                     <p class="dash-feedback" id="cfg-feedback" hidden></p>
 
@@ -151,7 +59,6 @@
         </main>
     </div>
 
-    <script src="/config.js"></script>
     <script type="module" src="/src/pages/dashboard-configuracion.js"></script>
 </body>
 </html>
