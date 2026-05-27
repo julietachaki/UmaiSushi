@@ -1,8 +1,10 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "cleanUrls": true,
   "rewrites": [
     { "source": "/", "destination": "/u/index.html" },
+    { "source": "/u/", "destination": "/u/index.html" },
     { "source": "/orden", "destination": "/u/orden.html" },
     { "source": "/u/:slug", "destination": "/u/index.html" },
     { "source": "/u/:slug/pedido", "destination": "/u/pedido.html?slug=:slug" },

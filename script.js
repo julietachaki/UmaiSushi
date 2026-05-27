@@ -44,7 +44,7 @@ function propagarSlugEnLinks(slug) {
     document.querySelectorAll('a[href]').forEach(function (a) {
         var href = a.getAttribute('href');
         if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto:')) return;
-        var lastSegment = href.split('?')[0].split('/').pop();
+        var lastSegment = href.split('?')[0].split('#')[0].split('/').pop();
         if (lastSegment === 'index.html') {
             a.setAttribute('href', '/u/' + encodeURIComponent(slug) + '/');
         } else if (lastSegment === 'pedido.html') {
@@ -118,7 +118,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         cargarZonasConSupabase()
     ]);
 
-    if (window.location.pathname.includes('pedido.html')) {
+    var _pp = window.location.pathname;
+    if (_pp.includes('pedido.html') || _pp.endsWith('/pedido')) {
         renderPedido();
         inicializarPedidoUI();
     } else {
