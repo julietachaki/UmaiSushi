@@ -22,6 +22,7 @@ function dashToggleDrawer() {
     const sidebar = document.getElementById('dash-mobile-drawer')
     if (sidebar) sidebar.classList.toggle('active')
 }
+window.dashToggleDrawer = dashToggleDrawer
 
 export function mountDashShell(opts = {}) {
     const headerMount = document.getElementById('dash-header-mount')
