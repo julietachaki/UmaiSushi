@@ -1308,9 +1308,11 @@ function confirmarPedido() {
             }
             const urlWa = `https://wa.me/${currentNegocio.telefono_negocio}?text=${encodeURIComponent(mensajeFinal)}`;
 
-            window.open(urlWa, '_blank');
+            window.location.href = urlWa;
 
-            window.location.href = '/u/index.html';
+            setTimeout(function() {
+                window.location.href = '/u/index.html';
+            }, 3000);
         })
         .catch(function(err) {
             console.error('[confirmar] Error creando pedido:', err);
