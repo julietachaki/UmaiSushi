@@ -3,7 +3,7 @@ import { obtenerProductos } from './services/productos.service.js'
 import { obtenerZonas } from './services/zonas.service.js'
 import { obtenerNegocioPorSlug } from './services/negocios.service.js'
 import { crearPedido } from './services/pedidos.service.js'
-import { setProductosCache, obtenerMenu, loadMenu, initializeMenu, obtenerExtrasProductos, buscarProductoPorNombre } from './menu-store.js'
+import { setProductosCache, obtenerMenu, loadMenu, initializeMenu, obtenerExtrasProductos, buscarProductoPorNombre, cargarCacheLocal } from './menu-store.js'
 import { setUmasushiZonasCache, obtenerZonasDelivery, obtenerExtrasStored, calcularExtrasMonto, obtenerSubtotalProductos, obtenerTotalPedidoNumerico, extrasLineItems, construirMensajeWhatsApp } from './order-shared.js'
 import { calculateDelivery } from './delivery-calc.js'
 import { searchAddressCoordinates, reverseGeocodeCoords, initLeafletMap, createLeafletCircle } from './maps-osm.js'
@@ -97,6 +97,11 @@ async function cargarZonasConSupabase() {
  * Cargar productos desde Supabase y actualizar productosCache (menu-store.js).
  */
 async function cargarProductosConSupabase() {
+    var cached = cargarCacheLocal();
+    if (cached && cached.length > 0) {
+        setProductosCache(cached);
+    }
+
     try {
         const opts = currentNegocio ? { negocioId: currentNegocio.id } : {};
         const productos = await obtenerProductos(opts);
@@ -109,7 +114,9 @@ async function cargarProductosConSupabase() {
         console.error('[app] Error cargando productos:', e.message);
     }
 
-    console.error('[app] No se pudieron cargar productos. Verificar conexión a Supabase.');
+    if (!productosCache || productosCache.length === 0) {
+        console.error('[app] No se pudieron cargar productos. Verificar conexión a Supabase.');
+    }
 }
 
 function toggleMenu() {

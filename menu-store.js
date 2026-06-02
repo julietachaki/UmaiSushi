@@ -3,11 +3,41 @@ import { isSupabaseReady } from './services/supabase.js'
 import placeholderImg from '/static/producto.jpeg'
 
 var UMASUSHI_MENU_CATEGORIAS = ['Productos', 'Tablas', 'Vinos']
+var CACHE_KEY = 'umaisushi_productos_cache'
+var CACHE_TTL_MS = 10 * 60 * 1000
 
 export var productosCache = []
 
 export function setProductosCache(val) {
-    productosCache = Array.isArray(val) ? val.slice() : []
+    var arr = Array.isArray(val) ? val.slice() : []
+    productosCache = arr
+    guardarCacheLocal(arr)
+}
+
+function cargarCacheLocal() {
+    try {
+        var raw = localStorage.getItem(CACHE_KEY)
+        if (!raw) return null
+        var parsed = JSON.parse(raw)
+        if (Date.now() - parsed.timestamp > CACHE_TTL_MS) {
+            localStorage.removeItem(CACHE_KEY)
+            return null
+        }
+        return parsed.data
+    } catch (e) {
+        return null
+    }
+}
+
+function guardarCacheLocal(data) {
+    try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            data: data
+        }))
+    } catch (e) {
+        /* localStorage lleno, ignorar */
+    }
 }
 
 function umasushiUid(prefix) {
@@ -355,5 +385,6 @@ export {
     eliminarProductoAsync,
     seedMenuEjemploEnSupabase,
     sincronizarProductos,
-    defaultMenuSeed
+    defaultMenuSeed,
+    cargarCacheLocal
 }
