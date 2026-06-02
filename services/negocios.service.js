@@ -8,7 +8,7 @@ export async function obtenerNegocioPorSlug(slug) {
 
     const { data, error } = await supabase
         .from('negocios_public')
-        .select('*')
+        .select('id, slug, nombre_negocio, telefono_negocio')
         .eq('slug', slug)
         .maybeSingle()
     if (error) {

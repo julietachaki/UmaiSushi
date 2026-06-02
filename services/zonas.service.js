@@ -54,7 +54,7 @@ export async function obtenerZonas(opciones = {}) {
     const negocioId = opciones && opciones.negocioId ? opciones.negocioId : null
 
     try {
-        let query = supabase.from('zonas_delivery').select('*')
+        let query = supabase.from('zonas_delivery').select('id, nombre, envio, center_lat, center_lng, radius_m')
         if (negocioId) query = query.eq('negocio_id', negocioId)
         query = query.order('nombre', { ascending: true })
 

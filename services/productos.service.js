@@ -10,7 +10,7 @@ export async function obtenerProductos(opciones = {}) {
     const soloActivos = opciones && opciones.soloActivos === false ? false : true
 
     try {
-        let query = supabase.from('productos').select('*')
+        let query = supabase.from('productos').select('id, nombre, descripcion, precio, categoria, imagen, activo, es_extra, tags, orden')
         if (soloActivos) query = query.eq('activo', true)
         if (negocioId) query = query.eq('negocio_id', negocioId)
         query = query.order('categoria', { ascending: true }).order('orden', { ascending: true })
