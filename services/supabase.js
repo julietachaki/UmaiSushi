@@ -7,6 +7,9 @@ let supabaseClient = null
 let supabaseInitialized = false
 let supabaseError = null
 
+let supabaseReadyResolve
+const supabaseReadyPromise = new Promise(resolve => { supabaseReadyResolve = resolve })
+
 initSupabase()
 
 export async function initSupabase() {
@@ -32,10 +35,12 @@ export async function initSupabase() {
         console.log('[supabase] ✓ Cliente inicializado exitosamente')
         console.log('[supabase] URL:', SUPABASE_URL)
 
+        supabaseReadyResolve()
         return supabaseClient
     } catch (error) {
         supabaseError = error.message
         console.error('[supabase] ✗ Error al inicializar:', error.message)
+        supabaseReadyResolve()
         return null
     }
 }
@@ -50,6 +55,11 @@ export function getSupabase() {
 
 export function isSupabaseReady() {
     return supabaseInitialized && supabaseClient !== null
+}
+
+export async function awaitSupabaseReady() {
+    await supabaseReadyPromise
+    return supabaseClient
 }
 
 export function getSupabaseError() {

@@ -1,4 +1,4 @@
-import { isSupabaseReady } from './services/supabase.js'
+import { awaitSupabaseReady } from './services/supabase.js'
 import { obtenerProductos } from './services/productos.service.js'
 import { obtenerZonas } from './services/zonas.service.js'
 import { obtenerNegocioPorSlug } from './services/negocios.service.js'
@@ -21,12 +21,7 @@ function getSlugFromUrl() {
 async function resolverNegocioActual() {
     if (currentNegocio) return currentNegocio;
     const slug = getSlugFromUrl();
-    // Esperar a Supabase ready
-    let intentos = 0;
-    while (!isSupabaseReady() && intentos < 30) {
-        await new Promise(r => setTimeout(r, 100));
-        intentos++;
-    }
+    await awaitSupabaseReady();
     currentNegocio = await obtenerNegocioPorSlug(slug);
     if (!currentNegocio) {
     }
@@ -89,14 +84,6 @@ document.addEventListener('DOMContentLoaded', async function () {
  */
 async function cargarZonasConSupabase() {
     try {
-        let intentos = 0;
-        while (!isSupabaseReady() && intentos < 10) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            intentos++;
-        }
-        if (!isSupabaseReady()) {
-            return;
-        }
         const opts = currentNegocio ? { negocioId: currentNegocio.id } : {};
         const zonas = await obtenerZonas(opts);
         setUmasushiZonasCache(zonas);
@@ -111,28 +98,17 @@ async function cargarZonasConSupabase() {
  */
 async function cargarProductosConSupabase() {
     try {
-        // Esperar a que Supabase esté inicializado
-        let intentos = 0;
-        while (!isSupabaseReady() && intentos < 10) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            intentos++;
-        }
-        
-        if (isSupabaseReady()) {
-            const opts = currentNegocio ? { negocioId: currentNegocio.id } : {};
-            const productos = await obtenerProductos(opts);
+        const opts = currentNegocio ? { negocioId: currentNegocio.id } : {};
+        const productos = await obtenerProductos(opts);
 
-            if (productos && productos.length > 0) {
-                setProductosCache(productos);
-                
-                return;
-            }
+        if (productos && productos.length > 0) {
+            setProductosCache(productos);
+            return;
         }
     } catch (e) {
         console.error('[app] Error cargando productos:', e.message);
     }
 
-    // Supabase es la única fuente de verdad. Si falla, no inventamos datos.
     console.error('[app] No se pudieron cargar productos. Verificar conexión a Supabase.');
 }
 
