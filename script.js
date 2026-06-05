@@ -290,6 +290,11 @@ function umasushiEscapeHtml(text = "") {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+function decodeHTMLEntities(str) {
+    const txt = document.createElement('textarea');
+    txt.innerHTML = str;
+    return txt.value;
+}
 function renderMenu() {
     const host = getEl('menu-dynamic');
     if (!host) return;
@@ -422,7 +427,7 @@ function renderMenu() {
         if (btn.dataset.bound === '1') return;
         btn.dataset.bound = '1';
         btn.addEventListener('click', function () {
-            const name = this.dataset.name || '';
+            const name = decodeHTMLEntities(this.getAttribute('data-name') || '');
             if (this.dataset.action === 'inc') incrementarProducto(name);
             else decrementarProducto(name);
         });
@@ -474,10 +479,10 @@ function actualizarContadores() {
 
     document.querySelectorAll('.counter-qty').forEach(el => (el.textContent = '0'));
 
-    pedido.forEach(item => {
-        const selector = `.counter-qty[data-qty-for="${CSS.escape(item.nombre)}"]`;
-        const contador = document.querySelector(selector);
-        if (contador) contador.textContent = String(item.cantidad || 0);
+    document.querySelectorAll('.counter-qty[data-qty-for]').forEach(el => {
+        const attrName = decodeHTMLEntities(el.getAttribute('data-qty-for') || '');
+        const item = pedido.find(p => p.nombre === attrName);
+        if (item) el.textContent = String(item.cantidad || 0);
     });
 }
 
