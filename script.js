@@ -32,16 +32,17 @@ async function resolverNegocioActual() {
 document.addEventListener('DOMContentLoaded', async function () {
     const sections = document.querySelectorAll('section');
 
-    const observer = new IntersectionObserver(
-        entries => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) entry.target.classList.add('fade-in');
-            });
-        },
-        { threshold: 0.1 }
-    );
-
-    sections.forEach(section => observer.observe(section));
+    if (typeof IntersectionObserver !== 'undefined') {
+        const observer = new IntersectionObserver(
+            entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) entry.target.classList.add('fade-in');
+                });
+            },
+            { threshold: 0.1 }
+        );
+        sections.forEach(section => observer.observe(section));
+    }
 
     // ===== CARGA DE DATOS (solo Supabase) =====
     // 1. Resolver negocio por slug
@@ -200,9 +201,13 @@ function setText(elOrId, value) {
 
 // ----- helpers localStorage (FASE 2B) -----
 function getLS(key, fallback) {
-    var v = localStorage.getItem(key);
-    if (v === null) return fallback;
-    return v;
+    try {
+        var v = localStorage.getItem(key);
+        if (v === null) return fallback;
+        return v;
+    } catch (e) {
+        return fallback;
+    }
 }
 
 function setLS(key, value) {
@@ -403,25 +408,26 @@ function renderMenu() {
     });
 
     // Observer para actualizar tabs activos al hacer scroll
-    const sectionObserver = new IntersectionObserver(
-        (entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const sectionId = entry.target.id;
-                    tabs.forEach(tab => {
-                        const tabSectionId = 'menu-section-' + tab.dataset.category.toLowerCase().replace(/\s+/g, '-');
-                        if (tabSectionId === sectionId) {
-                            tabs.forEach(t => t.classList.remove('active'));
-                            tab.classList.add('active');
-                        }
-                    });
-                }
-            });
-        },
-        { threshold: 0.3 }
-    );
-    
-    sections.forEach(section => sectionObserver.observe(section));
+    if (typeof IntersectionObserver !== 'undefined') {
+        const sectionObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const sectionId = entry.target.id;
+                        tabs.forEach(tab => {
+                            const tabSectionId = 'menu-section-' + tab.dataset.category.toLowerCase().replace(/\s+/g, '-');
+                            if (tabSectionId === sectionId) {
+                                tabs.forEach(t => t.classList.remove('active'));
+                                tab.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            },
+            { threshold: 0.3 }
+        );
+        sections.forEach(section => sectionObserver.observe(section));
+    }
 
     host.querySelectorAll('.counter-btn[data-action]').forEach(btn => {
         if (btn.dataset.bound === '1') return;
