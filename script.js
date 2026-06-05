@@ -291,9 +291,9 @@ function umasushiEscapeHtml(text = "") {
         .replace(/'/g, "&#039;");
 }
 function decodeHTMLEntities(str) {
-    const txt = document.createElement('textarea');
-    txt.innerHTML = str;
-    return txt.value;
+    const div = document.createElement('div');
+    div.innerHTML = str;
+    return div.textContent;
 }
 function renderMenu() {
     const host = getEl('menu-dynamic');
