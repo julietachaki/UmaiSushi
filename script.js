@@ -3,7 +3,7 @@ import { obtenerProductos } from './services/productos.service.js'
 import { obtenerZonas } from './services/zonas.service.js'
 import { obtenerNegocioPorSlug } from './services/negocios.service.js'
 import { crearPedido } from './services/pedidos.service.js'
-import { setProductosCache, obtenerMenu, loadMenu, initializeMenu, obtenerExtrasProductos, buscarProductoPorNombre, cargarCacheLocal } from './menu-store.js'
+import { setProductosCache, obtenerMenu, loadMenu, initializeMenu, obtenerExtrasProductos, buscarProductoPorNombre, buscarProductoPorId, cargarCacheLocal } from './menu-store.js'
 import { setUmasushiZonasCache, obtenerZonasDelivery, obtenerExtrasStored, calcularExtrasMonto, obtenerSubtotalProductos, obtenerTotalPedidoNumerico, extrasLineItems, construirMensajeWhatsApp } from './order-shared.js'
 import { calculateDelivery } from './delivery-calc.js'
 import { searchAddressCoordinates, reverseGeocodeCoords, initLeafletMap, createLeafletCircle } from './maps-osm.js'
@@ -164,7 +164,9 @@ function guardarPedido(pedido) {
     try {
         localStorage.setItem('pedido', JSON.stringify(pedido));
     } catch (e) {
-        /* localStorage no disponible (Safari private browsing, etc.) */
+        // No tragar en silencio: este catch fue lo que volvió invisible el bug "no suma" en Safari.
+        // (QuotaExceededError / private browsing). Dejamos traza para diagnóstico.
+        console.warn('[carrito] no se pudo persistir el pedido en localStorage:', e && e.name, e);
     }
     actualizarContadores();
     actualizarStickyBar();
@@ -456,7 +458,9 @@ function incrementarProducto(nombreProducto) {
             nombre: producto.nombre,
             precio: Number(producto.precio) || 0,
             desc: producto.descripcion || producto.desc || '',
-            imagen: producto.imagen || placeholderImg,
+            // NO guardar la imagen (data-URL base64 de hasta ~640KB) en el item del carrito:
+            // infla localStorage y dispara QuotaExceededError en Safari iOS (cuota chica) => el carrito
+            // "no suma". La imagen se resuelve por id/nombre desde el menú en renderPedido().
             categoria: producto.categoria || 'Productos',
             veggi: !!(producto.tags && producto.tags.veggi),
             cantidad: 1
@@ -545,7 +549,10 @@ function renderPedido() {
     pedido.forEach((item, idx) => {
         const itemEl = document.createElement('div');
         itemEl.className = 'pedido-item pedido-item-card';
-        const img = item.imagen || placeholderImg;
+        // La imagen ya no se persiste en el carrito; se resuelve desde el menú por id (o nombre).
+        // item.imagen queda como fallback por compatibilidad con carritos guardados antes del fix.
+        const prodMenu = (item.id != null ? buscarProductoPorId(item.id) : null) || buscarProductoPorNombre(item.nombre);
+        const img = (prodMenu && prodMenu.imagen) || item.imagen || placeholderImg;
         itemEl.innerHTML = `
             <img src="${umasushiEscapeHtml(img)}" alt="${umasushiEscapeHtml(item.nombre)}">
             <div class="item-details">

@@ -5,7 +5,9 @@ const PEDIDO_ESTADOS_VALIDOS = ['nuevo', 'preparando', 'listo', 'entregado', 'ca
 function pedidoToRow(p) {
     if (!p || typeof p !== 'object') return null
 
-    const productos = Array.isArray(p.productos) ? p.productos : []
+    // No persistir el data-URL base64 de la imagen en la fila del pedido: ningún consumidor lo lee
+    // (la imagen ya vive en la tabla productos por id) y mantiene chico el jsonb 'productos'.
+    const productos = (Array.isArray(p.productos) ? p.productos : []).map(({ imagen, ...resto }) => resto)
     const extras = p.extras && typeof p.extras === 'object' ? p.extras : {}
     const subtotal = Number(p.subtotal ?? p.subtotalMenu ?? 0) || 0
     const extras_total = Number(p.extras_total ?? p.extrasMonto ?? 0) || 0
