@@ -160,7 +160,11 @@ function obtenerPedido() {
 }
 
 function guardarPedido(pedido) {
-    localStorage.setItem('pedido', JSON.stringify(pedido));
+    try {
+        localStorage.setItem('pedido', JSON.stringify(pedido));
+    } catch (e) {
+        /* localStorage no disponible (Safari private browsing, etc.) */
+    }
     actualizarContadores();
     actualizarStickyBar();
 }
@@ -202,11 +206,19 @@ function getLS(key, fallback) {
 }
 
 function setLS(key, value) {
-    localStorage.setItem(key, value);
+    try {
+        localStorage.setItem(key, value);
+    } catch (e) {
+        /* localStorage no disponible */
+    }
 }
 
 function removeLS(key) {
-    localStorage.removeItem(key);
+    try {
+        localStorage.removeItem(key);
+    } catch (e) {
+        /* localStorage no disponible */
+    }
 }
 
 var LS_EXTRAS = 'umasushiPedidoExtras';
