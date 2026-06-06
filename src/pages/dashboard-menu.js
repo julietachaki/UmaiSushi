@@ -252,30 +252,61 @@ async function delProducto(id) {
         migrateBtn.addEventListener('click', async () => {
             migrateBtn.disabled = true;
             migrateBtn.textContent = 'Migrando…';
-            const toMigrate = state.productos.filter(p => p.imagen && p.imagen.startsWith('data:'));
+            let toMigrate = state.productos.filter(p => p.imagen && p.imagen.startsWith('data:'));
             let ok = 0, fail = 0;
-            for (const p of toMigrate) {
-                if (migrateFb) {
-                    migrateFb.hidden = false;
-                    migrateFb.textContent = `Migrando ${ok + fail + 1}/${toMigrate.length}: ${p.nombre}…`;
-                }
-                const url = await subirImagenSiEsBase64(p.imagen, p.id);
-                if (url && url !== p.imagen) {
-                    const updated = await actualizarProducto(p.id, { imagen: url });
-                    if (updated) ok++; else fail++;
-                } else {
-                    fail++;
+            const LOTE = 3;
+
+            for (let i = 0; i < toMigrate.length; i += LOTE) {
+                const lote = toMigrate.slice(i, i + LOTE);
+                const resultados = await Promise.allSettled(
+                    lote.map(async (p) => {
+                        const idx = toMigrate.indexOf(p);
+                        if (migrateFb) {
+                            migrateFb.hidden = false;
+                            migrateFb.textContent = `Migrando ${idx + 1}/${toMigrate.length}: ${p.nombre}…`;
+                        }
+                        const url = await subirImagenSiEsBase64(p.imagen, p.id);
+                        if (url && url !== p.imagen) {
+                            const updated = await actualizarProducto(p.id, { imagen: url });
+                            if (updated) return true;
+                            throw new Error('actualizarProducto devolvió null');
+                        }
+                        throw new Error('subirImagenSiEsBase64 retornó igual o null');
+                    })
+                );
+                for (const r of resultados) {
+                    if (r.status === 'fulfilled' && r.value === true) {
+                        ok++;
+                    } else {
+                        fail++;
+                        const prod = lote[resultados.indexOf(r)];
+                        console.error('[migracion] Falló producto "%s" (id=%s): %s', prod?.nombre || '?', prod?.id || '?', r.reason?.message || 'desconocido');
+                    }
                 }
             }
-            migrateBtn.hidden = true;
-            migrateBtn.disabled = false;
-            migrateBtn.textContent = 'Migrar imágenes';
+
             state.productos = await obtenerProductos({ negocioId: state.negocioId });
             renderGrid();
-            if (migrateFb) {
-                migrateFb.textContent = ok > 0 ? `✓ ${ok} imágenes migradas a Storage.` : 'Sin imágenes para migrar.';
-                migrateFb.className = 'dash-feedback ' + (fail === 0 ? 'ok' : 'error');
-                setTimeout(() => { migrateFb.hidden = true; }, 6000);
+
+            const restantes = state.productos.filter(p => p.imagen && p.imagen.startsWith('data:'));
+            if (restantes.length > 0) {
+                migrateBtn.hidden = false;
+                migrateBtn.disabled = false;
+                migrateBtn.textContent = `Reintentar (${restantes.length} restantes)`;
+                if (migrateFb) {
+                    migrateFb.textContent = `✓ ${ok} migradas, ${fail} fallaron. Revisá la consola para más detalles.`;
+                    migrateFb.className = 'dash-feedback error';
+                    setTimeout(() => { migrateFb.hidden = true; }, 8000);
+                }
+            } else {
+                migrateBtn.hidden = true;
+                migrateBtn.disabled = false;
+                migrateBtn.textContent = 'Migrar imágenes';
+                if (migrateFb) {
+                    migrateFb.textContent = `✓ ${ok} imágenes migradas a Storage.`;
+                    migrateFb.className = 'dash-feedback ok';
+                    setTimeout(() => { migrateFb.hidden = true; }, 6000);
+                }
             }
         });
     }
