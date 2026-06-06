@@ -1,5 +1,6 @@
 import { bootstrapDashPage } from '../../shared/dashboard-shell.js'
-import { obtenerProductos, guardarProducto, eliminarProductoDeSupabase } from '../../services/productos.service.js'
+import { obtenerProductos, guardarProducto, eliminarProductoDeSupabase, actualizarProducto } from '../../services/productos.service.js'
+import { subirImagen } from '../../services/storage.service.js'
 import placeholderImg from '/static/producto.jpeg'
 
 function escapeHtml(s) {
@@ -27,6 +28,25 @@ function readFileAsDataUrl(file) {
     });
 }
 
+function comprimirImagen(file, maxW = 400, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = function () {
+            URL.revokeObjectURL(url);
+            const canvas = document.createElement('canvas');
+            let w = img.naturalWidth, h = img.naturalHeight;
+            if (w > maxW) { h = h * maxW / w; w = maxW; }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = url;
+    });
+}
+
 let state = { negocioId: null, productos: [], editando: false };
 
 function proximoOrden(categoria) {
@@ -42,7 +62,7 @@ function productoCardHtml(p) {
     if (p.tags?.glutenfree) tags.push('<span class="dash-menu-tag">Gluten free</span>');
     return `
         <div class="dash-menu-card" data-prod-id="${escapeHtml(p.id)}">
-            <img src="${escapeHtml(p.imagen || placeholderImg)}" alt="">
+            <img src="${escapeHtml(p.imagen || placeholderImg)}" alt="" loading="lazy">
             <div class="dash-menu-card-body">
                 <h4>${escapeHtml(p.nombre || '')}</h4>
                 <p class="dash-menu-card-desc">${escapeHtml(p.descripcion || '')}</p>
@@ -99,13 +119,27 @@ function openModal(producto) {
 }
 function closeModal() { modal.hidden = true; }
 
+async function subirImagenSiEsBase64(imagen, productId) {
+    if (!imagen || !imagen.startsWith('data:')) return imagen;
+    const match = imagen.match(/^data:(image\/\w+);base64,/);
+    if (!match) return imagen;
+    const mime = match[1];
+    const base64Str = imagen.split(',')[1];
+    const binaryStr = atob(base64Str);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mime });
+    const file = new File([blob], productId + '.jpg', { type: mime });
+    const url = await subirImagen(file, productId);
+    return url || imagen;
+}
+
 async function saveProducto() {
     const id = document.getElementById('prod-id').value || newUuid();
     const nombre = document.getElementById('prod-nombre').value.trim();
     const desc = document.getElementById('prod-desc').value.trim();
     const precio = Number(document.getElementById('prod-precio').value);
     const categoria = document.getElementById('prod-categoria').value;
-    const imagen = document.getElementById('prod-imagen-preview').src || placeholderImg;
     const veggi = document.getElementById('prod-veggi').checked;
     const glutenfree = document.getElementById('prod-glutenfree').checked;
     const es_extra = document.getElementById('prod-es-extra').checked;
@@ -113,6 +147,13 @@ async function saveProducto() {
 
     if (!nombre) { showFeedback(modalFb, 'El nombre es obligatorio', false); return; }
     if (!(precio >= 0)) { showFeedback(modalFb, 'Precio inválido', false); return; }
+
+    const saveBtn = document.getElementById('modal-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Guardando…';
+
+    const rawImagen = document.getElementById('prod-imagen-preview').src || placeholderImg;
+    const imagen = await subirImagenSiEsBase64(rawImagen, id);
 
     const producto = {
         id,
@@ -128,9 +169,6 @@ async function saveProducto() {
         negocio_id: state.negocioId
     };
 
-    const saveBtn = document.getElementById('modal-save');
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Guardando…';
     const guardado = await guardarProducto(producto);
     saveBtn.disabled = false;
     saveBtn.textContent = 'Guardar';
@@ -190,12 +228,12 @@ async function delProducto(id) {
     document.getElementById('prod-imagen-file').addEventListener('change', async e => {
         const f = e.target.files[0];
         if (!f) return;
-        if (f.size > 500 * 1024) {
-            showFeedback(modalFb, 'Imagen muy grande (máx 500KB). Usá una más chica.', false);
+        if (f.size > 2 * 1024 * 1024) {
+            showFeedback(modalFb, 'Imagen muy grande (máx 2MB).', false);
             e.target.value = '';
             return;
         }
-        const dataUrl = await readFileAsDataUrl(f);
+        const dataUrl = await comprimirImagen(f, 400, 0.7);
         document.getElementById('prod-imagen-preview').src = dataUrl;
     });
 
@@ -203,4 +241,42 @@ async function delProducto(id) {
         if (state.editando) return;
         document.getElementById('prod-orden').value = proximoOrden(document.getElementById('prod-categoria').value);
     });
+
+    // Migration button: existing base64 images → Storage
+    const migrateBtn = document.getElementById('btn-migrar-imgs');
+    const migrateFb = document.getElementById('migrate-feedback');
+    if (migrateBtn) {
+        const hasBase64 = state.productos.some(p => p.imagen && p.imagen.startsWith('data:'));
+        migrateBtn.hidden = !hasBase64;
+
+        migrateBtn.addEventListener('click', async () => {
+            migrateBtn.disabled = true;
+            migrateBtn.textContent = 'Migrando…';
+            const toMigrate = state.productos.filter(p => p.imagen && p.imagen.startsWith('data:'));
+            let ok = 0, fail = 0;
+            for (const p of toMigrate) {
+                if (migrateFb) {
+                    migrateFb.hidden = false;
+                    migrateFb.textContent = `Migrando ${ok + fail + 1}/${toMigrate.length}: ${p.nombre}…`;
+                }
+                const url = await subirImagenSiEsBase64(p.imagen, p.id);
+                if (url && url !== p.imagen) {
+                    const updated = await actualizarProducto(p.id, { imagen: url });
+                    if (updated) ok++; else fail++;
+                } else {
+                    fail++;
+                }
+            }
+            migrateBtn.hidden = true;
+            migrateBtn.disabled = false;
+            migrateBtn.textContent = 'Migrar imágenes';
+            state.productos = await obtenerProductos({ negocioId: state.negocioId });
+            renderGrid();
+            if (migrateFb) {
+                migrateFb.textContent = ok > 0 ? `✓ ${ok} imágenes migradas a Storage.` : 'Sin imágenes para migrar.';
+                migrateFb.className = 'dash-feedback ' + (fail === 0 ? 'ok' : 'error');
+                setTimeout(() => { migrateFb.hidden = true; }, 6000);
+            }
+        });
+    }
 })();

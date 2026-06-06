@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
+    mostrarSkeletonMenu();
+
     await Promise.all([
         cargarProductosConSupabase(),
         cargarZonasConSupabase()
@@ -302,6 +304,29 @@ function decodeHTMLEntities(str) {
     div.innerHTML = str;
     return div.textContent;
 }
+
+function mostrarSkeletonMenu() {
+    const host = document.getElementById('menu-dynamic');
+    if (!host) return;
+    var cards = '';
+    for (var i = 0; i < 6; i++) {
+        cards += '<div class="skeleton-card">' +
+            '<div class="skeleton-main">' +
+            '<div class="skeleton-line skeleton-line--lg"></div>' +
+            '<div class="skeleton-line skeleton-line--md"></div>' +
+            '<div class="skeleton-line skeleton-line--sm"></div>' +
+            '<div class="skeleton-line skeleton-line--price"></div>' +
+            '<div class="skeleton-line skeleton-line--actions"></div>' +
+            '</div>' +
+            '<div class="skeleton-img"></div>' +
+            '</div>';
+    }
+    host.innerHTML = '<div class="menu-section"><h3 class="skeleton-line skeleton-line--sm" style="margin-bottom:16px">&nbsp;</h3><div class="products-grid">' + cards + '</div></div>';
+}
+
+function ocultarSkeletonMenu() {
+    /* skeleton se reemplaza cuando renderMenu() setea host.innerHTML */
+}
 function renderMenu() {
     const host = getEl('menu-dynamic');
     if (!host) return;
@@ -338,7 +363,7 @@ function renderMenu() {
               </div>
             </div>
             <div class="product-side">
-              <img src="${umasushiEscapeHtml(img)}" alt="${umasushiEscapeHtml(nombre)}" class="product-img">
+              <img src="${umasushiEscapeHtml(img)}" alt="${umasushiEscapeHtml(nombre)}" class="product-img" loading="lazy">
             </div>
           </div>`;
     }

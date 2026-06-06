@@ -143,10 +143,14 @@
             <div class="dash-container">
                 <div class="dash-page-header">
                     <h2>Menú</h2>
-                    <button class="dash-btn-primary" id="btn-nuevo">+ Agregar producto</button>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button class="dash-btn-secondary" id="btn-migrar-imgs" style="font-size:0.85rem;" hidden>Migrar imágenes</button>
+                        <button class="dash-btn-primary" id="btn-nuevo">+ Agregar producto</button>
+                    </div>
                 </div>
 
                 <p class="dash-feedback" id="feedback" hidden></p>
+                <p class="dash-feedback" id="migrate-feedback" hidden></p>
 
                 <div id="menu-grid" class="dash-menu-grid"></div>
             </div>
